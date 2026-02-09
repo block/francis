@@ -73,10 +73,9 @@ enum class Steps(val stepName: String) {
 
     WAIT_RELEASE("wait-release") {
         override fun run() {
-            val commit = ctx.headSha()
             println("Waiting for release workflow to complete...")
 
-            waitForWorkflow("release", commit)
+            waitForWorkflow("release", tag = ctx.releaseTag, commit = ctx.headSha())
 
             println()
             println("GitHub release and Maven Central artifacts published:")
@@ -170,63 +169,83 @@ private fun ensureCleanGitRepo() {
     }
 }
 
-private fun waitForWorkflow(workflow: String, commit: String, timeoutMinutes: Int = 30) {
-    val startTime = System.currentTimeMillis()
-    val timeoutMs = timeoutMinutes * 60 * 1000L
+private fun waitForWorkflow(workflow: String, tag: String, commit: String, timeoutMinutes: Int = 30) {
+    // Wait a moment for workflow to be registered
+    Thread.sleep(5_000)
 
-    while (System.currentTimeMillis() - startTime < timeoutMs) {
+    // Find the run ID for this tag and commit
+    var runId: String? = null
+    repeat(10) {
         val result = ctx.runCommandOutput(listOf(
             "gh", "run", "list",
             "--workflow=$workflow.yaml",
+            "--branch=$tag",
             "--commit=$commit",
-            "--repo=squareup/francis",
-            "--json", "status,conclusion",
-            "--jq", ".[0]"
+            "--repo=block/francis",
+            "--json", "databaseId",
+            "--jq", ".[0].databaseId"
         )).trim()
-
-        if (result.contains("\"conclusion\":\"success\"")) {
-            println("✓ Workflow '$workflow' completed successfully!")
-            return
+        if (result.isNotEmpty() && result != "null") {
+            runId = result
+            return@repeat
         }
-        if (result.contains("\"conclusion\":\"failure\"")) {
-            error("Workflow '$workflow' failed!")
-        }
-
-        val elapsed = (System.currentTimeMillis() - startTime) / 1000
-        println("  Waiting for $workflow... (${elapsed}s elapsed)")
-        Thread.sleep(30_000)
+        println("  Waiting for $workflow workflow to start...")
+        Thread.sleep(10_000)
     }
-    error("Timeout waiting for workflow '$workflow'")
+
+    requireNotNull(runId) { "Could not find workflow run for $workflow on tag $tag commit $commit" }
+
+    // Use 'gh run watch' to stream status (avoids rate limiting from repeated API calls)
+    println("Watching workflow run $runId...")
+    val success = ctx.runCommand(listOf(
+        "gh", "run", "watch", runId!!,
+        "--repo=block/francis",
+        "--exit-status"
+    ))
+
+    if (success) {
+        println("✓ Workflow '$workflow' completed successfully!")
+    } else {
+        error("Workflow '$workflow' failed!")
+    }
 }
 
 private fun waitForWorkflowInRepo(workflow: String, repo: String, timeoutMinutes: Int = 10) {
     Thread.sleep(5_000) // Give workflow time to start
 
-    val startTime = System.currentTimeMillis()
-    val timeoutMs = timeoutMinutes * 60 * 1000L
-
-    while (System.currentTimeMillis() - startTime < timeoutMs) {
+    // Find the most recent run ID for this workflow
+    var runId: String? = null
+    repeat(10) {
         val result = ctx.runCommandOutput(listOf(
             "gh", "run", "list",
             "--workflow=$workflow",
             "--repo=$repo",
-            "--json", "status,conclusion",
-            "--jq", ".[0]"
+            "--json", "databaseId",
+            "--jq", ".[0].databaseId"
         )).trim()
-
-        if (result.contains("\"conclusion\":\"success\"")) {
-            println("✓ Workflow '$workflow' in '$repo' completed successfully!")
-            return
+        if (result.isNotEmpty() && result != "null") {
+            runId = result
+            return@repeat
         }
-        if (result.contains("\"conclusion\":\"failure\"")) {
-            error("Workflow '$workflow' in '$repo' failed!")
-        }
-
-        val elapsed = (System.currentTimeMillis() - startTime) / 1000
-        println("  Waiting for $workflow in $repo... (${elapsed}s elapsed)")
+        println("  Waiting for $workflow workflow to start in $repo...")
         Thread.sleep(10_000)
     }
-    error("Timeout waiting for workflow '$workflow' in '$repo'")
+
+    requireNotNull(runId) { "Could not find workflow run for $workflow in $repo" }
+
+    // Use 'gh run watch' to stream status (avoids rate limiting from repeated API calls)
+    println("Watching workflow run $runId in $repo...")
+    val success = ctx.runCommand(listOf(
+        "gh", "run", "watch", runId!!,
+        "--repo=$repo",
+        "--exit-status"
+    ))
+
+    if (success) {
+        println("✓ Workflow '$workflow' in '$repo' completed successfully!")
+    } else {
+        error("Workflow '$workflow' in '$repo' failed!")
+    }
 }
 
 

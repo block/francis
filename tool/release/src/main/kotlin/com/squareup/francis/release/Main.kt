@@ -39,7 +39,7 @@ class ReleaseCommand : CliktCommand(name = "release") {
 
     private fun runAllSteps(francisDir: File) {
         val context = ReleaseContext(francisDir)
-        val releaseScript = francisDir.resolve("release.sh")
+        val releaseScript = francisDir.resolve("scripts/release.sh")
         
         for (step in Steps.entries) {
             println()

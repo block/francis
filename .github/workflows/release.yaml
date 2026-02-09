@@ -48,7 +48,7 @@ jobs:
         run: ./gradlew :hostSdk:printPublishingInfo :instrumentationSdk:printPublishingInfo
 
       - name: Publish to Maven Central
-        run: ./gradlew :hostSdk:publish :instrumentationSdk:publish --info
+        run: ./gradlew publishToMavenCentral --info
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_CENTRAL_PASSWORD }}

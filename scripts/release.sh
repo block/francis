@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Start at repo root - one level above scripts dir
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+cd "$SCRIPT_DIR/.."
 
 JAR_PATH="tool/release/build/libs/release.jar"
 

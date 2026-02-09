@@ -32,33 +32,27 @@ The script will:
    - Updates `gradle.properties` to remove `-SNAPSHOT`
    - Commits and pushes the branch
 
-3. **Wait for GitHub Actions build**
-   - Monitors the `build` workflow for the release branch
-   - Downloads the built artifacts when complete
-
-4. **Extract artifacts**
-   - Extracts the release tarball
-
-5. **Tag the release** (`vX.Y.Z`)
+3. **Tag the release** (`vX.Y.Z`)
    - Creates an annotated git tag
    - Pushes the tag to GitHub
 
-6. **Wait for GitHub Actions release workflow**
-   - Publishes to Maven Central (host-sdk)
+4. **Wait for GitHub Actions release workflow**
+   - Builds, tests, and publishes to Maven Central (host-sdk/instrumentation-sdk)
    - Creates GitHub release with tarball
    - Prints verification URLs:
-     - GitHub Release: `https://github.com/squareup/francis/releases/tag/vX.Y.Z`
-     - Maven Central: `https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/X.Y.Z`
+     - GitHub Release: `https://github.com/block/francis/releases/tag/vX.Y.Z`
+     - Maven Central (host-sdk): `https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/X.Y.Z`
+     - Maven Central (instrumentation-sdk): `https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/X.Y.Z`
    - Note: Maven Central artifacts may take up to 30 minutes to become available
 
-7. **Merge release branch to main**
+5. **Merge release branch to main**
    - Fast-forward merge only
 
-8. **Bump version for next development cycle**
+6. **Bump version for next development cycle**
    - Updates `gradle.properties` to `X.Y.Z+1-SNAPSHOT`
    - Commits and pushes to main
 
-9. **Update Homebrew formula**
+7. **Update Homebrew formula**
    - Triggers `update-francis.yaml` workflow in `block/homebrew-tap`
    - Waits for the workflow to complete
 
@@ -71,10 +65,8 @@ The release script supports automatic resumption if something fails partway thro
 Each major step in the release process is tracked:
 - `PROMPT` - Initial confirmation
 - `CREATE_BRANCH` - Release branch creation
-- `WAIT_BUILD` - GitHub Actions build
-- `EXTRACT` - Artifact extraction
 - `TAG_RELEASE` - Git tag creation
-- `WAIT_RELEASE` - GitHub Actions release
+- `WAIT_RELEASE` - GitHub Actions release (builds, tests, publishes)
 - `MERGE_MAIN` - Merge to main
 - `BUMP_SNAPSHOT` - Version bump
 - `TRIGGER_FORMULA_BUMP` - Homebrew formula update
@@ -113,8 +105,9 @@ Each release produces:
      - Demo APKs
      - Wrapper scripts
 
-2. **Maven Central Artifact**
+2. **Maven Central Artifacts**
    - `com.squareup.francis:host-sdk:X.Y.Z` - Host SDK JAR
+   - `com.squareup.francis:instrumentation-sdk:X.Y.Z` - Instrumentation SDK AAR
 
 3. **Homebrew Formula**
    - Updated in `block/homebrew-tap` repository

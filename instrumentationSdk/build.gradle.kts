@@ -37,6 +37,12 @@ dependencies {
 
 val francisVersion = project.findProperty("francis.version") as String
 
+tasks.register("printPublishingInfo") {
+    doLast {
+        println("Publishing com.squareup.francis:instrumentation-sdk:$francisVersion")
+    }
+}
+
 configure<MavenPublishBaseExtension> {
     publishToMavenCentral(automaticRelease = true)
     signAllPublications()

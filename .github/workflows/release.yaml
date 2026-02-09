@@ -29,20 +29,6 @@ jobs:
             exit 1
           fi
 
-      - name: Find latest successful build artifact for this commit
-        id: find-build
-        run: |
-          BUILD_RUN_ID=$(.github/scripts/find-build-for-commit.sh $GITHUB_SHA)
-          echo "BUILD_RUN_ID=$BUILD_RUN_ID" >> $GITHUB_OUTPUT
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download build artifact
-        run: |
-          gh run download ${{ steps.find-build.outputs.BUILD_RUN_ID }} -n francis-release-tar-gz -D artifacts
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Setup JDK
         uses: actions/setup-java@v5
         with:
@@ -52,28 +38,32 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4
 
-      - name: Extract SDK artifact from tarball
-        run: |
-          tar -xzf artifacts/francis-release.tar.gz sdk/francis-host-sdk.jar
+      - name: Build and test
+        run: ./gradlew build -PexcludeDeviceTests
+
+      - name: Create release artifacts
+        run: ./gradlew releaseArtifacts
 
       - name: Print publishing info
-        run: ./gradlew :lib:printPublishingInfo
+        run: ./gradlew :hostSdk:printPublishingInfo :instrumentationSdk:printPublishingInfo
 
-      - name: Publish host-sdk JAR to Maven Central
-        run: |
-          ./gradlew :lib:publish \
-            -PartifactFile=$(pwd)/sdk/francis-host-sdk.jar \
-            --info
+      - name: Publish to Maven Central
+        run: ./gradlew :hostSdk:publish :instrumentationSdk:publish --info
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_CENTRAL_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_SECRET_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_SECRET_PASSPHRASE }}
 
+      - name: Create release tarball
+        run: |
+          cd build/release
+          tar -czvf ../../francis-release.tar.gz .
+
       - name: Create GitHub release
         run: |
           gh release create ${{ github.ref_name }} \
-            artifacts/francis-release.tar.gz \
+            francis-release.tar.gz \
             --title "Francis Release ${{ steps.version.outputs.version }}" \
             --notes "Release bundle including Maven-published JAR and other artifacts."
         env:

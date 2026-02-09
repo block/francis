@@ -104,8 +104,9 @@ enum class Steps(val stepName: String) {
 
             println()
             println("GitHub release and Maven Central artifacts published:")
-            println("  GitHub Release: https://github.com/squareup/francis/releases/tag/${ctx.releaseTag}")
-            println("  Maven Central:  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/${ctx.releaseVersion}")
+            println("  GitHub Release:        https://github.com/block/francis/releases/tag/${ctx.releaseTag}")
+            println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/${ctx.releaseVersion}")
+            println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/${ctx.releaseVersion}")
             println()
             println("Note: Maven Central artifacts may take up to 30 minutes to become available.")
         }
@@ -147,9 +148,10 @@ enum class Steps(val stepName: String) {
             println("═══════════════════════════════════════════════════════════════")
             println()
             println("All release artifacts:")
-            println("  GitHub Release: https://github.com/squareup/francis/releases/tag/${ctx.releaseTag}")
-            println("  Maven Central:  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/${ctx.releaseVersion}")
-            println("  Homebrew:       https://github.com/block/homebrew-tap/blob/main/Formula/francis.rb")
+            println("  GitHub Release:        https://github.com/block/francis/releases/tag/${ctx.releaseTag}")
+            println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/${ctx.releaseVersion}")
+            println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/${ctx.releaseVersion}")
+            println("  Homebrew:              https://github.com/block/homebrew-tap/blob/main/Formula/francis.rb")
             println()
         }
     };

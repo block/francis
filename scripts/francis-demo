@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Builds quickly and runs profiler (no graal)
+
+set -euo pipefail
+
+# Save the current directory so we can restore it when running francis
+user_cwd="$(pwd)"
+
+# Change to francis directory to build
+root_dir="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root_dir"
+
+./gradlew --quiet :releaseArtifacts
+
+
+java -jar "$root_dir/build/release/jar/francis-demo.jar" "$@"

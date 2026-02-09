@@ -1,0 +1,44 @@
+name: build
+
+on:
+  push:
+    branches: [main, 'release/*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read version
+        id: version
+        run: echo "version=$(grep '^francis.version=' gradle.properties | cut -d= -f2)" >> $GITHUB_OUTPUT
+
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4
+
+      - name: Build
+        run: ./gradlew build -PexcludeDeviceTests
+
+      - name: Create release artifacts
+        run: ./gradlew releaseArtifacts
+
+      - name: Create release tarball
+        run: |
+          cd build/release
+          tar -czvf ../../francis-release.tar.gz .
+
+      - name: Upload release tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: francis-release-tar-gz
+          path: francis-release.tar.gz
+          retention-days: 7

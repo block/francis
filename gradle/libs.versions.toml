@@ -1,0 +1,26 @@
+[versions]
+clikt = "5.0.3"
+kotlin = "2.1.21"
+androidGradle = "8.9.0"
+jvmTarget = "17"
+vanniktechMavenPublish = "0.34.0"
+
+[libraries]
+vanniktech-maven-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "vanniktechMavenPublish" }
+clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
+logcat = { module = "com.squareup.logcat:logcat", version = "0.4" }
+datumbox = { module = "com.datumbox:datumbox-framework-lib", version = "0.8.2" }
+junit = { module = "junit:junit", version = "4.13.2" }
+truth = { module = "com.google.truth:truth", version = "1.4.4" }
+jetbrains-kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.6.3" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+android-application = { id = "com.android.application", version.ref = "androidGradle" }
+android-library = { id = "com.android.library", version.ref = "androidGradle" }
+application = { id = "application" }
+vanniktech-maven-publish-base = { id = "com.vanniktech.maven.publish.base", version.ref = "vanniktechMavenPublish" }

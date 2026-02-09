@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Builds quickly and runs (no graal)
+
+set -euo pipefail
+
+# Save the current directory so we can restore it when running francis
+user_cwd="$(pwd)"
+
+# Change to francis directory to build
+root_dir="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root_dir"
+
+./gradlew --quiet :main:jar
+
+# Run from the user's original directory
+cd "$user_cwd"
+java -cp "$root_dir/main/build/libs/main.jar" com.squareup.francis.main.MainKt "$@"

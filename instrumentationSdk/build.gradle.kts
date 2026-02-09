@@ -1,10 +1,9 @@
 import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
-import com.vanniktech.maven.publish.MavenPublishBaseExtension
 
 plugins {
     id("com.android.library")
     kotlin("android")
-    id("com.vanniktech.maven.publish.base")
+    id("com.vanniktech.maven.publish")
 }
 
 android {
@@ -43,7 +42,7 @@ tasks.register("printPublishingInfo") {
     }
 }
 
-configure<MavenPublishBaseExtension> {
+mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
     signAllPublications()
 
@@ -54,7 +53,7 @@ configure<MavenPublishBaseExtension> {
     pom {
         name.set("Francis Instrumentation SDK")
         description.set("SDK for Francis Android performance testing - instrumentation side")
-        url.set("https://github.com/squareup/francis")
+        url.set("https://github.com/block/francis")
         licenses {
             license {
                 name.set("Apache License 2.0")
@@ -68,9 +67,9 @@ configure<MavenPublishBaseExtension> {
             }
         }
         scm {
-            connection.set("scm:git:git://github.com/squareup/francis.git")
-            developerConnection.set("scm:git:ssh://github.com/squareup/francis.git")
-            url.set("https://github.com/squareup/francis")
+            connection.set("scm:git:git://github.com/block/francis.git")
+            developerConnection.set("scm:git:ssh://github.com/block/francis.git")
+            url.set("https://github.com/block/francis")
         }
     }
 }

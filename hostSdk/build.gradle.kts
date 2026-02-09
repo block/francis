@@ -1,12 +1,11 @@
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinJvm
-import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
-    id("com.vanniktech.maven.publish.base")
+    id("com.vanniktech.maven.publish")
     kotlin("kapt")
 }
 
@@ -63,7 +62,7 @@ tasks.withType<KotlinCompile> {
     }
 }
 
-configure<MavenPublishBaseExtension> {
+mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
     signAllPublications()
 
@@ -74,7 +73,7 @@ configure<MavenPublishBaseExtension> {
     pom {
         name.set("Francis Host SDK")
         description.set("SDK for Francis Android performance testing")
-        url.set("https://github.com/squareup/francis")
+        url.set("https://github.com/block/francis")
         licenses {
             license {
                 name.set("Apache License 2.0")
@@ -88,9 +87,9 @@ configure<MavenPublishBaseExtension> {
             }
         }
         scm {
-            connection.set("scm:git:git://github.com/squareup/francis.git")
-            developerConnection.set("scm:git:ssh://github.com/squareup/francis.git")
-            url.set("https://github.com/squareup/francis")
+            connection.set("scm:git:git://github.com/block/francis.git")
+            developerConnection.set("scm:git:ssh://github.com/block/francis.git")
+            url.set("https://github.com/block/francis")
         }
     }
 }

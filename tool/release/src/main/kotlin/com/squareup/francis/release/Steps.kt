@@ -63,30 +63,6 @@ enum class Steps(val stepName: String) {
         }
     },
 
-    WAIT_BUILD("wait-build") {
-        override fun run() {
-            val commit = ctx.headSha()
-            println("Waiting for build workflow to complete for commit $commit...")
-
-            waitForWorkflow("build", commit)
-
-            println("Finding build run...")
-            val buildRunId = findBuildForCommit(commit)
-            require(buildRunId.isNotEmpty() && buildRunId != "null") {
-                "No successful build found for commit $commit"
-            }
-
-            println("Downloading artifacts from build run $buildRunId...")
-            ctx.artifactsDir.resolve("artifacts").mkdirs()
-            check(ctx.runCommand(listOf(
-                "gh", "run", "download", buildRunId,
-                "-n", "francis-release-tar-gz",
-                "-D", ctx.artifactsDir.resolve("artifacts").path,
-                "--repo", "squareup/francis"
-            )))
-        }
-    },
-
     TAG_RELEASE("tag-release") {
         override fun run() {
             println("Tagging release as ${ctx.releaseTag}")
@@ -253,14 +229,4 @@ private fun waitForWorkflowInRepo(workflow: String, repo: String, timeoutMinutes
     error("Timeout waiting for workflow '$workflow' in '$repo'")
 }
 
-private fun findBuildForCommit(commit: String): String {
-    return ctx.runCommandOutput(listOf(
-        "gh", "run", "list",
-        "--workflow=build.yaml",
-        "--commit=$commit",
-        "--status=success",
-        "--repo=squareup/francis",
-        "--json", "databaseId",
-        "--jq", ".[0].databaseId"
-    )).trim()
-}
+

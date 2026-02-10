@@ -8,6 +8,8 @@ import com.squareup.francis.process.OutputRedirectSpec
 import com.squareup.francis.process.subproc
 import java.io.File
 
+private const val DEVICE_FRANCIS_DIR = "/data/local/tmp/.francis"
+
 class Benchmark(
   val baseVals: BaseValues,
   val runnerVals: RunnerValues,
@@ -22,7 +24,7 @@ class Benchmark(
   // Only used with simpleperf
   val simpleperfOutputDir: String? by lazy {
     if (runnerVals.profiler == "simpleperf") {
-      "/data/local/tmp/francis/$instrumentationPackage"
+      "$DEVICE_FRANCIS_DIR/$instrumentationPackage"
     } else {
       null
     }
@@ -31,7 +33,7 @@ class Benchmark(
   // Path on device where custom perfetto config is pushed
   val devicePerfettoConfigPath: String? by lazy {
     runnerVals.perfettoConfigPath?.let {
-      "/data/local/tmp/francis/perfetto-config.textproto"
+      "$DEVICE_FRANCIS_DIR/perfetto-config.textproto"
     }
   }
 

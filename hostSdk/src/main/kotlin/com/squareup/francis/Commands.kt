@@ -31,44 +31,44 @@ class FrancisEntrypoint(
 }
 
 open class BenchCommand(
-  instrumentationOpts: RunnerOptions,
+  runnerOpts: RunnerOptions,
 ) : CliktCommand(name = "bench") {
   override fun help(context: Context) = "Run a benchmark"
 
-  protected val baseOpts by instrumentationOpts.base
-  protected val instrumentationOpts by instrumentationOpts
+  protected val baseOpts by runnerOpts.base
+  protected val runnerOpts by runnerOpts
 
   override fun run() {
     baseOpts.setup()
-    runBenchmark(baseOpts, instrumentationOpts)
+    runBenchmark(baseOpts, runnerOpts)
   }
 
-  open fun runBenchmark(base: BaseValues, runner: RunnerValues) {
-    Benchmark(base, runner).run()
+  open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {
+    Benchmark(baseVals, runnerVals).run()
   }
 }
 
 /** A do-nothing command used to parse and resolve options without running. */
 private class ResolveCommand(
-  instrumentationOpts: RunnerOptions,
+  runnerOpts: RunnerOptions,
 ) : CliktCommand(name = "resolve") {
-  val baseOpts by instrumentationOpts.base
-  val instrumentationOpts by instrumentationOpts
+  val baseOpts by runnerOpts.base
+  val runnerOpts by runnerOpts
 
   override fun run() {
     baseOpts.setup()
     // Force resolution of lazy properties (populates resolution cache)
-    instrumentationOpts.appApk
-    instrumentationOpts.instrumentationApk
+    runnerOpts.appApk
+    runnerOpts.instrumentationApk
   }
 }
 
 class AbCommand(
   private val baseConfig: BaseConfig,
-  private val instrumentationOptsFactory: (BaseConfig) -> RunnerOptions,
+  private val runnerOptsFactory: (BaseConfig) -> RunnerOptions,
   private val benchCommandFactory: (RunnerOptions) -> BenchCommand = { opts -> BenchCommand(opts) },
   private val rawArgs: List<String> = emptyList(),
-  instrumentationOpts: RunnerOptions = instrumentationOptsFactory(baseConfig),
+  runnerOpts: RunnerOptions = runnerOptsFactory(baseConfig),
   private val entrypointName: String = "francis",
 ) : CliktCommand(name = "ab") {
   private val abArgs: AbArgs by lazy {
@@ -87,45 +87,45 @@ class AbCommand(
   """.trimIndent()
 
   @Suppress("unused")
-  private val baseOpts by instrumentationOpts.base
+  private val baseOpts by runnerOpts.base
   @Suppress("unused")
-  private val instrumentationOpts by instrumentationOpts
+  private val runnerOpts by runnerOpts
 
   override fun run() {
     val parsed = abArgs
 
     val baselineConfig = baseConfig.withOutputSubdir("baseline-output")
-    val baselineInstrOpts = instrumentationOptsFactory(baselineConfig)
+    val baselineRunnerOpts = runnerOptsFactory(baselineConfig)
 
     val treatmentConfig = baseConfig.withOutputSubdir("treatment-output")
-    val treatmentInstrOpts = instrumentationOptsFactory(treatmentConfig)
+    val treatmentRunnerOpts = runnerOptsFactory(treatmentConfig)
 
     // Resolve both before running either (resolution cache ensures --mr resolves consistently)
     log { "Resolving baseline options..." }
-    ResolveCommand(baselineInstrOpts).parse(parsed.baselineArgs())
+    ResolveCommand(baselineRunnerOpts).parse(parsed.baselineArgs())
     log { "Resolving treatment options..." }
-    ResolveCommand(treatmentInstrOpts).parse(parsed.treatmentArgs())
+    ResolveCommand(treatmentRunnerOpts).parse(parsed.treatmentArgs())
 
-    val baselineVerbosity = baselineInstrOpts.base.verbosity
-    val treatmentVerbosity = treatmentInstrOpts.base.verbosity
+    val baselineVerbosity = baselineRunnerOpts.base.verbosity
+    val treatmentVerbosity = treatmentRunnerOpts.base.verbosity
     if (baselineVerbosity != treatmentVerbosity) {
       throw PithyException(1, "Verbosity must be the same for baseline and treatment: $baselineVerbosity vs $treatmentVerbosity")
     }
 
     // Run both benchmarks
     log { "Running baseline benchmark..." }
-    benchCommandFactory(baselineInstrOpts).runBenchmark(baselineInstrOpts.base, baselineInstrOpts)
-    log { "Baseline results: ${baselineInstrOpts.hostOutputDir}" }
+    benchCommandFactory(baselineRunnerOpts).runBenchmark(baselineRunnerOpts.base, baselineRunnerOpts)
+    log { "Baseline results: ${baselineRunnerOpts.hostOutputDir}" }
 
     log { "Running treatment benchmark..." }
-    benchCommandFactory(treatmentInstrOpts).runBenchmark(treatmentInstrOpts.base, treatmentInstrOpts)
-    log { "Treatment results: ${treatmentInstrOpts.hostOutputDir}" }
+    benchCommandFactory(treatmentRunnerOpts).runBenchmark(treatmentRunnerOpts.base, treatmentRunnerOpts)
+    log { "Treatment results: ${treatmentRunnerOpts.hostOutputDir}" }
 
     log { "A/B comparison complete." }
 
     emitCompareCommands(
-      baselineDir = File(baselineInstrOpts.hostOutputDir),
-      treatmentDir = File(treatmentInstrOpts.hostOutputDir),
+      baselineDir = File(baselineRunnerOpts.hostOutputDir),
+      treatmentDir = File(treatmentRunnerOpts.hostOutputDir),
       entrypointName = entrypointName,
     )
   }
@@ -200,13 +200,13 @@ open class PerfettoCommand : CliktCommand(name = "perfetto") {
 }
 
 open class SimpleperfCommand(
-  instrumentationOpts: RunnerOptions,
+  runnerOpts: RunnerOptions,
   private val benchCommandFactory: (RunnerOptions) -> BenchCommand,
 ) : CliktCommand(name = "simpleperf") {
   override fun help(context: Context) = "Run a benchmark with simpleperf profiling. Requires the instrumentation SDK."
 
-  protected val baseOpts by instrumentationOpts.base
-  protected val instrumentationOpts by instrumentationOpts
+  protected val baseOpts by runnerOpts.base
+  protected val runnerOpts by runnerOpts
 
   private val callGraph by option(
     "--call-graph",
@@ -216,21 +216,21 @@ open class SimpleperfCommand(
   override fun run() {
     baseOpts.setup()
     val callGraphValue = callGraph
-    val optsWithProfiler = object : RunnerValues by instrumentationOpts {
+    val optsWithProfiler = object : RunnerValues by runnerOpts {
       override val profiler: String = "simpleperf"
       override val simpleperfCallGraph: String? = callGraphValue
-      override val delegate: RunnerValues get() = instrumentationOpts
+      override val delegate: RunnerValues get() = runnerOpts
     }
     runBenchmark(baseOpts, optsWithProfiler)
   }
 
-  open fun runBenchmark(base: BaseValues, runner: RunnerValues) {
-    benchCommandFactory(instrumentationOpts).runBenchmark(base, runner)
+  open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {
+    benchCommandFactory(runnerOpts).runBenchmark(baseVals, runnerVals)
   }
 }
 
 /**
- * @param instrumentationOptionsFactory Factory to create fresh RunnerOptions instances.
+ * @param runnerOptionsFactory Factory to create fresh RunnerOptions instances.
  *   A factory is needed because AbCommand creates multiple instances with different parsed args.
  *   The factory receives BaseConfig which includes francisRunDir and hostOutputDir.
  * @param benchCommandFactory Factory to create BenchCommand instances. Override to customize
@@ -245,7 +245,7 @@ fun runFrancis(
   rawArgs: Array<String>,
   name: String,
   help: String = "Francis - Android benchmark runner.",
-  instrumentationOptionsFactory: (BaseConfig) -> RunnerOptions = { config -> RunnerOptions(config = config) },
+  runnerOptionsFactory: (BaseConfig) -> RunnerOptions = { config -> RunnerOptions(config = config) },
   benchCommandFactory: (RunnerOptions) -> BenchCommand = { opts -> BenchCommand(opts) },
   simplePerfCommandFactory: (RunnerOptions) -> SimpleperfCommand = { opts -> SimpleperfCommand(opts, benchCommandFactory) },
   compareCommandFactory: () -> CompareCommand = { CompareCommand() },
@@ -267,11 +267,11 @@ fun runFrancis(
 
   val command = FrancisEntrypoint(name, help)
     .subcommands(
-      benchCommandFactory(instrumentationOptionsFactory(baseConfig)),
-      AbCommand(baseConfig, instrumentationOptionsFactory, benchCommandFactory, rawArgs.toList(), entrypointName = name),
+      benchCommandFactory(runnerOptionsFactory(baseConfig)),
+      AbCommand(baseConfig, runnerOptionsFactory, benchCommandFactory, rawArgs.toList(), entrypointName = name),
       compareCommandFactory(),
       perfettoCommandFactory(),
-      simplePerfCommandFactory(instrumentationOptionsFactory(baseConfig)),
+      simplePerfCommandFactory(runnerOptionsFactory(baseConfig)),
     )
   try {
     command.parse(cliktArgs)

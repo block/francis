@@ -15,6 +15,7 @@ interface RunnerValues {
   val runnerClass: String
   val suppressErrors: Boolean
   val aot: Boolean
+  val dryRun: Boolean
   val instrumentationArgs: Map<String, String>
   val hostOutputDir: String
   val iterations: Int?
@@ -77,6 +78,11 @@ open class RunnerOptions(
     """.trimIndent()
   ).nullableFlag("--no-aot")
   override val aot: Boolean by lazy { aotOption ?: !base.devMode }
+
+  override val dryRun by option(
+    "--dry-run",
+    help = "Verify instrumentation works correctly without collecting performance data. Runs a single iteration with tracing and compilation disabled."
+  ).flag()
 
   val instrumentationArgsOption by option("--inst-arg", "--instrumentation-arg", help = "Arguments to pass to the instrumentation.")
     .multiple()

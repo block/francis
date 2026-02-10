@@ -2,6 +2,7 @@ package com.squareup.francis.process
 
 import com.squareup.francis.log.log
 import logcat.LogPriority
+import logcat.LogPriority.DEBUG
 import logcat.LogPriority.WARN
 import java.io.BufferedReader
 import java.io.BufferedWriter

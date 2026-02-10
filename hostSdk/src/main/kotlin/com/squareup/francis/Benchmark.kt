@@ -9,11 +9,11 @@ import com.squareup.francis.process.subproc
 import java.io.File
 
 class Benchmark(
-  val base: BaseValues,
-  val instrumentation: RunnerValues,
+  val baseVals: BaseValues,
+  val runnerVals: RunnerValues,
 ) {
-  val instrumentationApk = instrumentation.instrumentationApk
-  val appApk = instrumentation.appApk
+  val instrumentationApk = runnerVals.instrumentationApk
+  val appApk = runnerVals.appApk
 
   val instrumentationPackage: String by lazy { packageNameFromApk(instrumentationApk) }
   val appPackage: String by lazy { packageNameFromApk(appApk) }
@@ -21,7 +21,7 @@ class Benchmark(
 
   // Only used with simpleperf
   val simpleperfOutputDir: String? by lazy {
-    if (instrumentation.profiler == "simpleperf") {
+    if (runnerVals.profiler == "simpleperf") {
       "/data/local/tmp/francis/$instrumentationPackage"
     } else {
       null
@@ -29,15 +29,16 @@ class Benchmark(
   }
 
   val instrumentationArgsList: List<String> by lazy {
-    val instrumentationArgs: Map<String, String?> = instrumentation.instrumentationArgs + mapOf(
-      "class" to instrumentation.testSymbol,
+    val instrumentationArgs: Map<String, String?> = runnerVals.instrumentationArgs + mapOf(
+      "class" to runnerVals.testSymbol,
       "additionalTestOutputDir" to deviceOutputDir,
       "simpleperfOutputDir" to simpleperfOutputDir,
-      "simpleperfCallGraph" to instrumentation.simpleperfCallGraph,
-      "androidx.benchmark.suppressErrors" to (if (instrumentation.suppressErrors) "LOW-BATTERY,DEBUGGABLE,EMULATOR" else ""),
-      "androidx.benchmark.compilation.enabled" to instrumentation.aot.toString(),
-      "francis.iterations" to instrumentation.iterations?.toString(),
-      "francis.profiler" to instrumentation.profiler,
+      "simpleperfCallGraph" to runnerVals.simpleperfCallGraph,
+      "androidx.benchmark.suppressErrors" to (if (runnerVals.suppressErrors) "LOW-BATTERY,DEBUGGABLE,EMULATOR" else ""),
+      "androidx.benchmark.compilation.enabled" to runnerVals.aot.toString(),
+      "androidx.benchmark.dryRunMode.enable" to runnerVals.dryRun.toString(),
+      "francis.iterations" to runnerVals.iterations?.toString(),
+      "francis.profiler" to runnerVals.profiler,
     )
 
     instrumentationArgs
@@ -58,7 +59,7 @@ class Benchmark(
       "instrument",
       "-w",
     ) + instrumentationArgsList + arrayOf(
-      "$instrumentationPackage/${instrumentation.runnerClass}"
+      "$instrumentationPackage/${runnerVals.runnerClass}"
     )
 
     // Show logcat for the instrumentation process (UiDevice:d is absurdly verbose, so we silence
@@ -87,13 +88,13 @@ class Benchmark(
       throw PithyException(1, "Instrumentation failed: ${result.message}")
     }
 
-    adb.cmdRun("pull", deviceOutputDir, instrumentation.hostOutputDir)
+    adb.cmdRun("pull", deviceOutputDir, runnerVals.hostOutputDir)
     simpleperfOutputDir?.let { dir ->
       val files = adb.shellStdout("ls", dir) { logPriority = LogPriority.DEBUG }
         .lines()
         .filter { it.isNotBlank() }
       for (file in files) {
-        adb.cmdRun("pull", "$dir/$file", instrumentation.hostOutputDir)
+        adb.cmdRun("pull", "$dir/$file", runnerVals.hostOutputDir)
       }
     }
   }

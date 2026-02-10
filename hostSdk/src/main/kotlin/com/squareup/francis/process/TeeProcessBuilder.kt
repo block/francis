@@ -101,7 +101,7 @@ class TeeProcess(
       log(WARN) { "(${delegate.pid()}) still waiting for process to exit..." }
     }
     val code = delegate.exitValue()
-    log(WARN) { "(${delegate.pid()}) process exited, waiting for pumps..." }
+    log(DEBUG) { "(${delegate.pid()}) process exited, waiting for pumps..." }
     awaitPumps()
     logPriority?.let { log(it) { "(${delegate.pid()}) exited with code $code" } }
     code

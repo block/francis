@@ -94,10 +94,10 @@ class AbCommand(
   override fun run() {
     val parsed = abArgs
 
-    val baselineConfig = baseConfig.withOutputSubdir("baseline-output")
+    val baselineConfig = baseConfig.withOutputSubdir("baseline")
     val baselineRunnerOpts = runnerOptsFactory(baselineConfig)
 
-    val treatmentConfig = baseConfig.withOutputSubdir("treatment-output")
+    val treatmentConfig = baseConfig.withOutputSubdir("treatment")
     val treatmentRunnerOpts = runnerOptsFactory(treatmentConfig)
 
     // Resolve both before running either (resolution cache ensures --mr resolves consistently)

@@ -52,21 +52,21 @@ class BaseConfigTest {
   }
 
   @Test
-  fun hostOutputDir_usesOutputSubdir() {
+  fun hostOutputDir_defaultsToFrancisRunDir() {
     val runsDir = tempFolder.newFolder("runs")
     val config = createConfig(runsDir)
 
-    assertThat(config.hostOutputDir).isEqualTo("${config.francisRunDir}/output")
+    assertThat(config.hostOutputDir).isEqualTo(config.francisRunDir)
   }
 
   @Test
   fun withOutputSubdir_preservesFrancisRunDir() {
     val runsDir = tempFolder.newFolder("runs")
     val config = createConfig(runsDir)
-    val newConfig = config.withOutputSubdir("baseline-output")
+    val newConfig = config.withOutputSubdir("baseline")
 
     assertThat(newConfig.francisRunDir).isEqualTo(config.francisRunDir)
-    assertThat(newConfig.hostOutputDir).isEqualTo("${config.francisRunDir}/baseline-output")
+    assertThat(newConfig.hostOutputDir).isEqualTo("${config.francisRunDir}/baseline")
   }
 
   private fun createConfig(runsDir: File): BaseConfig {

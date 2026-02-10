@@ -88,7 +88,12 @@ class Benchmark(
       throw PithyException(1, "Instrumentation failed: ${result.message}")
     }
 
-    adb.cmdRun("pull", deviceOutputDir, runnerVals.hostOutputDir)
+    val testOutputFiles = adb.shellStdout("ls", deviceOutputDir) { logPriority = LogPriority.DEBUG }
+      .lines()
+      .filter { it.isNotBlank() }
+    for (file in testOutputFiles) {
+      adb.cmdRun("pull", "$deviceOutputDir/$file", runnerVals.hostOutputDir)
+    }
     simpleperfOutputDir?.let { dir ->
       val files = adb.shellStdout("ls", dir) { logPriority = LogPriority.DEBUG }
         .lines()

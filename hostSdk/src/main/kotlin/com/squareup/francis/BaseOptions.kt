@@ -28,7 +28,11 @@ class BaseConfig(
     runDir.mkdirs()
     runDir.absolutePath
   },
-  val outputSubdir: String = "output",
+  /**
+   * Subdirectory within francisRunDir for output files. Empty string means output directly to
+   * francisRunDir. Used by A/B comparisons to separate baseline and treatment outputs.
+   */
+  val outputSubdir: String = "",
   /**
    * Shared cache for APK resolution. Used by A/B comparisons to ensure baseline and treatment
    * resolve to the same APK when using dynamic sources (e.g., downloading from a URL that may
@@ -36,7 +40,7 @@ class BaseConfig(
    */
   val resolutionCache: MutableMap<String, String> = mutableMapOf(),
 ) {
-  val hostOutputDir: String get() = "$francisRunDir/$outputSubdir"
+  val hostOutputDir: String get() = if (outputSubdir.isEmpty()) francisRunDir else "$francisRunDir/$outputSubdir"
 
   fun withOutputSubdir(subdir: String) = BaseConfig(francisRunDir, subdir, resolutionCache)
 }
@@ -66,6 +70,6 @@ class BaseOptions(val config: BaseConfig = BaseConfig()) : OptionGroup(), BaseVa
   override val devMode by option("--dev", help = "Enable dev mode").flag()
 
   fun setup() {
-    setupLogging(verbosity, "${config.francisRunDir}/log.txt")
+    setupLogging(verbosity, "${config.francisRunDir}/francis.log")
   }
 }

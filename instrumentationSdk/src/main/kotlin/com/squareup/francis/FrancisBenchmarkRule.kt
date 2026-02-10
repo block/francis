@@ -150,9 +150,16 @@ class FrancisBenchmarkRule : TestRule {
             args.getString("simpleperfCallGraph")
         }
 
+        private val francisPerfettoConfigPath: String? by lazy {
+            args.getString("francis.perfettoConfigPath")
+        }
+
         @OptIn(ExperimentalPerfettoCaptureApi::class)
         private fun createPerfettoConfig(packageName: String): PerfettoConfig {
-            return PerfettoConfig.Text(DEFAULT_PERFETTO_CONFIG.replace("{PACKAGE}", packageName))
+            val configText = francisPerfettoConfigPath?.let { path ->
+                java.io.File(path).readText()
+            } ?: DEFAULT_PERFETTO_CONFIG.replace("{PACKAGE}", packageName)
+            return PerfettoConfig.Text(configText)
         }
 
         private val DEFAULT_PERFETTO_CONFIG = """

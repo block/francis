@@ -200,10 +200,17 @@ open class PerfettoCommand(
   protected val baseOpts by runnerOpts.base
   protected val runnerOpts by runnerOpts
 
+  private val perfettoConfigFile by option(
+    "--perfetto-config",
+    help = "Path to a custom Perfetto config file (text proto format). If not specified, uses the default config."
+  ).file(mustExist = true, canBeDir = false)
+
   override fun run() {
     baseOpts.setup()
+    val configPath = perfettoConfigFile?.absolutePath
     val optsWithProfiler = object : RunnerValues by runnerOpts {
       override val profiler: String = "perfetto"
+      override val perfettoConfigPath: String? = configPath
       override val delegate: RunnerValues get() = runnerOpts
     }
     runBenchmark(baseOpts, optsWithProfiler)

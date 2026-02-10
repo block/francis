@@ -28,6 +28,13 @@ class Benchmark(
     }
   }
 
+  // Path on device where custom perfetto config is pushed
+  val devicePerfettoConfigPath: String? by lazy {
+    runnerVals.perfettoConfigPath?.let {
+      "/data/local/tmp/francis/perfetto-config.textproto"
+    }
+  }
+
   val instrumentationArgsList: List<String> by lazy {
     val instrumentationArgs: Map<String, String?> = runnerVals.instrumentationArgs + mapOf(
       "class" to runnerVals.testSymbol,
@@ -39,6 +46,7 @@ class Benchmark(
       "androidx.benchmark.dryRunMode.enable" to runnerVals.dryRun.toString(),
       "francis.iterations" to runnerVals.iterations?.toString(),
       "francis.profiler" to runnerVals.profiler,
+      "francis.perfettoConfigPath" to devicePerfettoConfigPath,
     )
 
     instrumentationArgs
@@ -51,6 +59,7 @@ class Benchmark(
       adb.shellRun("rm", "-rf", it) { logPriority = LogPriority.DEBUG }
       adb.shellRun("mkdir", "-p", it) { logPriority = LogPriority.DEBUG }
     }
+    pushPerfettoConfigIfNeeded()
     ensureInstalled(appApk)
     ensureInstalled(instrumentationApk)
 
@@ -110,6 +119,13 @@ class Benchmark(
       .first { it.startsWith("package:") }
       .substringAfter("name='")
       .substringBefore("'")
+  }
+
+  private fun pushPerfettoConfigIfNeeded() {
+    val hostPath = runnerVals.perfettoConfigPath ?: return
+    val devicePath = devicePerfettoConfigPath ?: return
+    adb.shellRun("mkdir", "-p", File(devicePath).parent) { logPriority = LogPriority.DEBUG }
+    adb.cmdRun("push", hostPath, devicePath) { logPriority = LogPriority.DEBUG }
   }
 
   private fun ensureInstalled(apk: String) {

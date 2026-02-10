@@ -21,6 +21,7 @@ interface RunnerValues {
   val iterations: Int?
   val profiler: String?
   val simpleperfCallGraph: String?
+  val perfettoConfigPath: String?
 
   /** Returns the underlying delegate if this is a wrapper, or this if not. */
   val delegate: RunnerValues get() = this
@@ -99,4 +100,5 @@ open class RunnerOptions(
 
   override val profiler: String? = null
   override val simpleperfCallGraph: String? = null
+  override val perfettoConfigPath: String? = null
 }

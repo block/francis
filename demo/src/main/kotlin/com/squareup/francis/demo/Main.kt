@@ -17,5 +17,5 @@ class DemoRunnerOptions(
 fun main(rawArgs: Array<String>) = runFrancis(
   rawArgs = rawArgs,
   name = "francis-demo",
-  instrumentationOptionsFactory = { config -> DemoRunnerOptions(releaseDir, config) },
+  runnerOptionsFactory = { config -> DemoRunnerOptions(releaseDir, config) },
 )

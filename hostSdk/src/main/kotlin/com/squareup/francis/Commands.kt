@@ -191,11 +191,26 @@ open class CompareCommand : CliktCommand(name = "compare") {
   }
 }
 
-open class PerfettoCommand : CliktCommand(name = "perfetto") {
-  override fun help(context: Context) = "Collect a raw Perfetto trace (not yet implemented)"
+open class PerfettoCommand(
+  runnerOpts: RunnerOptions,
+  private val benchCommandFactory: (RunnerOptions) -> BenchCommand,
+) : CliktCommand(name = "perfetto") {
+  override fun help(context: Context) = "Collect a raw Perfetto trace"
+
+  protected val baseOpts by runnerOpts.base
+  protected val runnerOpts by runnerOpts
 
   override fun run() {
-    throw NotImplementedError("Perfetto tracing is not yet implemented")
+    baseOpts.setup()
+    val optsWithProfiler = object : RunnerValues by runnerOpts {
+      override val profiler: String = "perfetto"
+      override val delegate: RunnerValues get() = runnerOpts
+    }
+    runBenchmark(baseOpts, optsWithProfiler)
+  }
+
+  open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {
+    benchCommandFactory(runnerOpts).runBenchmark(baseVals, runnerVals)
   }
 }
 
@@ -249,7 +264,7 @@ fun runFrancis(
   benchCommandFactory: (RunnerOptions) -> BenchCommand = { opts -> BenchCommand(opts) },
   simplePerfCommandFactory: (RunnerOptions) -> SimpleperfCommand = { opts -> SimpleperfCommand(opts, benchCommandFactory) },
   compareCommandFactory: () -> CompareCommand = { CompareCommand() },
-  perfettoCommandFactory: () -> PerfettoCommand = { PerfettoCommand() },
+  perfettoCommandFactory: (RunnerOptions) -> PerfettoCommand = { opts -> PerfettoCommand(opts, benchCommandFactory) },
 ) = pithyMain(rawArgs) {
   val baseConfig = BaseConfig()
 
@@ -270,7 +285,7 @@ fun runFrancis(
       benchCommandFactory(runnerOptionsFactory(baseConfig)),
       AbCommand(baseConfig, runnerOptionsFactory, benchCommandFactory, rawArgs.toList(), entrypointName = name),
       compareCommandFactory(),
-      perfettoCommandFactory(),
+      perfettoCommandFactory(runnerOptionsFactory(baseConfig)),
       simplePerfCommandFactory(runnerOptionsFactory(baseConfig)),
     )
   try {

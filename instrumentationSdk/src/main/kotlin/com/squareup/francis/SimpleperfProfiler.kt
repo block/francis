@@ -12,6 +12,7 @@ import java.io.Closeable
  */
 internal class SimpleperfProfiler(
   private val outputDir: String,
+  private val testName: String,
   private val callGraph: String? = null,
 ) : Closeable {
   private val shell = ShellExecutor()
@@ -22,7 +23,8 @@ internal class SimpleperfProfiler(
   fun start() {
     checkForExistingSimpleperf()
 
-    val outputPath = "$outputDir/perf-iter${iteration.toString().padStart(3, '0')}.data"
+    val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", java.util.Locale.US).format(java.util.Date())
+    val outputPath = "$outputDir/${testName}_iter${iteration.toString().padStart(3, '0')}_$timestamp.simpleperf.data"
     val targetPackage = getTargetPackage()
 
     val eventArgs = if (supportsCpuCycles) emptyList() else listOf("-e", "cpu-clock")
@@ -109,6 +111,6 @@ internal class SimpleperfProfiler(
     private var iterationCounter = 0
 
     @Synchronized
-    private fun nextIteration(): Int = ++iterationCounter
+    private fun nextIteration(): Int = iterationCounter++
   }
 }

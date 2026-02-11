@@ -28,10 +28,15 @@ private class NoOpMetric : TraceMetric() {
 
 class FrancisBenchmarkRule : TestRule {
     private val macrobenchmarkRule = MacrobenchmarkRule()
+    private lateinit var testDescription: Description
 
     override fun apply(base: Statement, description: Description): Statement {
+        testDescription = description
         return macrobenchmarkRule.apply(base, description)
     }
+
+    private val testName: String
+        get() = "${testDescription.testClass.simpleName}_${testDescription.methodName}"
 
     @OptIn(ExperimentalBenchmarkConfigApi::class, ExperimentalPerfettoCaptureApi::class)
     fun measureRepeated(
@@ -115,7 +120,7 @@ class FrancisBenchmarkRule : TestRule {
     ): MacrobenchmarkScope.() -> Unit = when (francisProfiler) {
         "simpleperf" -> {
             {
-                SimpleperfProfiler(simpleperfOutputDir, simpleperfCallGraph).use { profiler ->
+                SimpleperfProfiler(simpleperfOutputDir, testName, simpleperfCallGraph).use { profiler ->
                     profiler.start()
                     measureBlock()
                 }

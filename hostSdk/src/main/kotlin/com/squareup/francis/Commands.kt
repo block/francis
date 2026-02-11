@@ -200,7 +200,7 @@ open class PerfettoCommand(
   runnerOpts: RunnerOptions,
   private val benchCommandFactory: (RunnerOptions) -> BenchCommand,
 ) : CliktCommand(name = "perfetto") {
-  override fun help(context: Context) = "Collect a raw Perfetto trace"
+  override fun help(context: Context) = "Collect a raw Perfetto trace. Requires the instrumentation SDK."
 
   protected val baseOpts by runnerOpts.base
   protected val runnerOpts by runnerOpts

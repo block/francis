@@ -35,67 +35,71 @@ class ViewCommand(
 
   override fun run() {
     baseOpts.setup()
-
-    val traceBytes = traceFile.readBytes()
-    val fileName = traceFile.name
-
-    val html = generateHtml(fileName)
-    val shutdownLatch = CountDownLatch(1)
-
-    val server = HttpServer.create(InetSocketAddress("127.0.0.1", port), 0)
-    val actualPort = server.address.port
-
-    server.createContext("/") { exchange ->
-      log { "${exchange.requestMethod} ${exchange.requestURI}" }
-      val response = html.toByteArray()
-      exchange.responseHeaders.add("Content-Type", "text/html; charset=utf-8")
-      exchange.sendResponseHeaders(200, response.size.toLong())
-      exchange.responseBody.use { it.write(response) }
-    }
-
-    server.createContext("/trace") { exchange ->
-      log { "${exchange.requestMethod} ${exchange.requestURI}" }
-      exchange.responseHeaders.add("Content-Type", "application/octet-stream")
-      exchange.sendResponseHeaders(200, traceBytes.size.toLong())
-      exchange.responseBody.use { it.write(traceBytes) }
-    }
-
-    server.createContext("/shutdown") { exchange ->
-      log { "${exchange.requestMethod} ${exchange.requestURI}" }
-      exchange.sendResponseHeaders(204, -1)
-      exchange.close()
-      shutdownLatch.countDown()
-    }
-
-    server.executor = null
-    server.start()
-
-    val localUrl = "http://127.0.0.1:$actualPort/"
-
-    log { "Serving loader page at $localUrl" }
-    log { "Click the button in the browser to open the trace in Perfetto UI." }
-
-    openInBrowser(localUrl)
-
-    shutdownLatch.await()
-    log { "Trace sent. Shutting down server..." }
-    server.stop(0)
+    openTraceInPerfetto(traceFile, port)
   }
 
-  private fun openInBrowser(url: String) {
-    val os = System.getProperty("os.name").lowercase()
-    val command = when {
-      os.contains("mac") -> arrayOf("open", url)
-      os.contains("linux") -> arrayOf("xdg-open", url)
-      else -> {
-        log { "Open manually: $url" }
-        return
+  companion object {
+    fun openTraceInPerfetto(traceFile: File, port: Int = 9001) {
+      val traceBytes = traceFile.readBytes()
+      val fileName = traceFile.name
+
+      val html = generateHtml(fileName)
+      val shutdownLatch = CountDownLatch(1)
+
+      val server = HttpServer.create(InetSocketAddress("127.0.0.1", port), 0)
+      val actualPort = server.address.port
+
+      server.createContext("/") { exchange ->
+        log { "${exchange.requestMethod} ${exchange.requestURI}" }
+        val response = html.toByteArray()
+        exchange.responseHeaders.add("Content-Type", "text/html; charset=utf-8")
+        exchange.sendResponseHeaders(200, response.size.toLong())
+        exchange.responseBody.use { it.write(response) }
       }
-    }
-    ProcessBuilder(*command).start()
-  }
 
-  private fun generateHtml(fileName: String): String {
+      server.createContext("/trace") { exchange ->
+        log { "${exchange.requestMethod} ${exchange.requestURI}" }
+        exchange.responseHeaders.add("Content-Type", "application/octet-stream")
+        exchange.sendResponseHeaders(200, traceBytes.size.toLong())
+        exchange.responseBody.use { it.write(traceBytes) }
+      }
+
+      server.createContext("/shutdown") { exchange ->
+        log { "${exchange.requestMethod} ${exchange.requestURI}" }
+        exchange.sendResponseHeaders(204, -1)
+        exchange.close()
+        shutdownLatch.countDown()
+      }
+
+      server.executor = null
+      server.start()
+
+      val localUrl = "http://127.0.0.1:$actualPort/"
+
+      log { "Serving loader page at $localUrl" }
+      log { "Click the button in the browser to open the trace in Perfetto UI." }
+
+      openInBrowser(localUrl)
+
+      shutdownLatch.await()
+      log { "Trace sent. Shutting down server..." }
+      server.stop(0)
+    }
+
+    private fun openInBrowser(url: String) {
+      val os = System.getProperty("os.name").lowercase()
+      val command = when {
+        os.contains("mac") -> arrayOf("open", url)
+        os.contains("linux") -> arrayOf("xdg-open", url)
+        else -> {
+          log { "Open manually: $url" }
+          return
+        }
+      }
+      ProcessBuilder(*command).start()
+    }
+
+    private fun generateHtml(fileName: String): String {
     return """
 <!DOCTYPE html>
 <html>
@@ -208,5 +212,6 @@ class ViewCommand(
 </body>
 </html>
     """.trimIndent()
+    }
   }
 }

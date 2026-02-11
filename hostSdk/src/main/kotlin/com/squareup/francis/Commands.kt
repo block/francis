@@ -205,6 +205,11 @@ open class PerfettoCommand(
     help = "Path to a custom Perfetto config file (text proto format). If not specified, uses the default config."
   ).file(mustExist = true, canBeDir = false)
 
+  private val view by option(
+    "--view",
+    help = "Open the trace in Perfetto UI after collection. If multiple iterations, opens the first trace."
+  ).flag()
+
   override fun run() {
     baseOpts.setup()
     val configPath = perfettoConfigFile?.absolutePath
@@ -215,6 +220,20 @@ open class PerfettoCommand(
       override val delegate: RunnerValues get() = runnerOpts
     }
     runBenchmark(baseOpts, optsWithProfiler)
+
+    if (view) {
+      val outputDir = File(optsWithProfiler.hostOutputDir)
+      val traceFile = outputDir.walkTopDown()
+        .filter { it.isFile && it.extension == "perfetto-trace" }
+        .sortedBy { it.name }
+        .firstOrNull()
+      if (traceFile != null) {
+        log { "Opening trace in Perfetto UI: ${traceFile.absolutePath}" }
+        ViewCommand.openTraceInPerfetto(traceFile)
+      } else {
+        log { "No .perfetto-trace files found in ${outputDir.absolutePath}" }
+      }
+    }
   }
 
   open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {

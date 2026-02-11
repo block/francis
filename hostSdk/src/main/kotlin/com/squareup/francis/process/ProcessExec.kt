@@ -1,10 +1,10 @@
 package com.squareup.francis.process
 
 import logcat.LogPriority
-import com.squareup.francis.log.log
-import com.squareup.francis.log.logFormatted
-import com.squareup.francis.log.prefix
-import com.squareup.francis.log.timeFormatter
+import com.squareup.francis.logging.log
+import com.squareup.francis.logging.logFormatted
+import com.squareup.francis.logging.prefix
+import com.squareup.francis.logging.timeFormatter
 import java.io.File
 import java.io.OutputStream
 import java.time.LocalDateTime

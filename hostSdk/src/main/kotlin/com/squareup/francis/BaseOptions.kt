@@ -7,7 +7,7 @@ import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.switch
 import com.github.ajalt.clikt.parameters.types.enum
-import com.squareup.francis.log.setupLogging
+import com.squareup.francis.logging.setupLogging
 import logcat.LogPriority
 
 

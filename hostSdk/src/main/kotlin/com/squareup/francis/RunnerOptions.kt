@@ -6,7 +6,7 @@ import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.nullableFlag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
-import com.squareup.francis.log.log
+import com.squareup.francis.logging.log
 
 interface RunnerValues {
   val appApk: String

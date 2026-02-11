@@ -8,7 +8,7 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
-import com.squareup.francis.log.log
+import com.squareup.francis.logging.log
 import com.sun.net.httpserver.HttpServer
 import java.io.File
 import java.net.InetSocketAddress

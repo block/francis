@@ -1,6 +1,6 @@
 package com.squareup.francis
 
-import com.squareup.francis.log.logFormatted
+import com.squareup.francis.logging.logFormatted
 import logcat.LogPriority
 import java.io.OutputStream
 

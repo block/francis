@@ -11,7 +11,7 @@ import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
-import com.squareup.francis.log.log
+import com.squareup.francis.logging.log
 import logcat.LogPriority.INFO
 import logcat.LogPriority.WARN
 import java.io.File

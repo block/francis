@@ -10,6 +10,7 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.file
 import com.squareup.francis.logging.log
 import logcat.LogPriority.INFO
@@ -20,6 +21,10 @@ class FrancisEntrypoint(
   name: String,
   private val helpText: String = "Francis - Android benchmark runner.",
 ) : CliktCommand(name = name) {
+  init {
+    versionOption(FRANCIS_VERSION)
+  }
+
   override fun help(context: Context) = helpText
 
   override fun aliases() = mapOf(

@@ -213,7 +213,7 @@ open class PerfettoCommand(
   private val view by option(
     "--view",
     help = "Open the trace in Perfetto UI after collection. If multiple iterations, opens the first trace."
-  ).flag()
+  ).flag("--no-view", default = true)
 
   override fun run() {
     baseOpts.setup()

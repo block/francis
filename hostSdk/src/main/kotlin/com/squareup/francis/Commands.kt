@@ -262,6 +262,7 @@ open class SimpleperfCommand(
  *   RunnerOptions; use benchCommandFactory from the enclosing scope if needed.
  * @param compareCommandFactory Factory to create CompareCommand instances.
  * @param perfettoCommandFactory Factory to create PerfettoCommand instances.
+ * @param viewCommandFactory Factory to create ViewCommand instances.
  */
 fun runFrancis(
   rawArgs: Array<String>,
@@ -272,6 +273,7 @@ fun runFrancis(
   simplePerfCommandFactory: (RunnerOptions) -> SimpleperfCommand = { opts -> SimpleperfCommand(opts, benchCommandFactory) },
   compareCommandFactory: () -> CompareCommand = { CompareCommand() },
   perfettoCommandFactory: (RunnerOptions) -> PerfettoCommand = { opts -> PerfettoCommand(opts, benchCommandFactory) },
+  viewCommandFactory: (BaseOptions) -> ViewCommand = { opts -> ViewCommand(opts) },
 ) = pithyMain(rawArgs) {
   val baseConfig = BaseConfig()
 
@@ -294,6 +296,7 @@ fun runFrancis(
       compareCommandFactory(),
       perfettoCommandFactory(runnerOptionsFactory(baseConfig)),
       simplePerfCommandFactory(runnerOptionsFactory(baseConfig)),
+      viewCommandFactory(BaseOptions(baseConfig)),
     )
   try {
     command.parse(cliktArgs)

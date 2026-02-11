@@ -153,8 +153,7 @@ class ViewCommand(
         // Shutdown the server so `francis view` exits
         fetch('/shutdown');
 
-        document.getElementById('openBtn').disabled = false;
-        document.getElementById('openBtn').textContent = 'Open in Perfetto UI';
+        openTrace();
       } catch (e) {
         updateStatus('Failed to load trace: ' + e.message, true);
       }
@@ -164,16 +163,17 @@ class ViewCommand(
       if (!traceBuffer) return;
       
       document.getElementById('openBtn').disabled = true;
-      updateStatus('Opening Perfetto UI...');
+      document.getElementById('openBtn').textContent = 'Opening...';
       
       const perfettoWindow = window.open('https://ui.perfetto.dev');
       if (!perfettoWindow) {
-        updateStatus('Popup blocked! Please allow popups and try again.', true);
+        updateStatus('Click the button to open Perfetto UI. (Tip: allow popups to skip this step)');
         document.getElementById('openBtn').disabled = false;
+        document.getElementById('openBtn').textContent = 'Open in Perfetto UI';
         return;
       }
 
-      updateStatus('Waiting for Perfetto UI to be ready...');
+      updateStatus('Waiting for Perfetto UI...');
 
       const sendPing = () => {
         perfettoWindow.postMessage('PING', 'https://ui.perfetto.dev');
@@ -187,8 +187,6 @@ class ViewCommand(
 
         clearInterval(pingInterval);
         window.removeEventListener('message', handler);
-
-        updateStatus('Sending trace to Perfetto UI...');
 
         perfettoWindow.postMessage({
           perfetto: {

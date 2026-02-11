@@ -48,31 +48,16 @@ class FrancisBenchmarkRule : TestRule {
         setupBlock: MacrobenchmarkScope.() -> Unit = {},
         measureBlock: MacrobenchmarkScope.() -> Unit
     ) {
-        if (francisProfiler == "perfetto") {
-            @OptIn(ExperimentalMetricApi::class)
-            macrobenchmarkRule.measureRepeated(
-                packageName = packageName,
-                metrics = listOf(NoOpMetric()),
-                iterations = francisIterations ?: iterations,
-                experimentalConfig = ExperimentalConfig(
-                    perfettoConfig = createPerfettoConfig(packageName)
-                ),
-                compilationMode = compilationMode,
-                startupMode = startupMode,
-                setupBlock = setupBlock,
-                measureBlock = measureBlock
-            )
-        } else {
-            macrobenchmarkRule.measureRepeated(
-                packageName = packageName,
-                metrics = metrics,
-                compilationMode = compilationMode,
-                startupMode = startupMode,
-                iterations = francisIterations ?: iterations,
-                setupBlock = setupBlock,
-                measureBlock = wrapMeasureBlock(measureBlock)
-            )
-        }
+        measureRepeatedInternal(
+            packageName = packageName,
+            metrics = metrics,
+            iterations = iterations,
+            experimentalConfig = ExperimentalConfig(),
+            compilationMode = compilationMode,
+            startupMode = startupMode,
+            setupBlock = setupBlock,
+            measureBlock = measureBlock
+        )
     }
 
     @OptIn(ExperimentalPerfettoCaptureApi::class)
@@ -87,46 +72,58 @@ class FrancisBenchmarkRule : TestRule {
         setupBlock: MacrobenchmarkScope.() -> Unit = {},
         measureBlock: MacrobenchmarkScope.() -> Unit
     ) {
-        if (francisProfiler == "perfetto") {
-            @OptIn(ExperimentalMetricApi::class)
-            macrobenchmarkRule.measureRepeated(
-                packageName = packageName,
-                metrics = listOf(NoOpMetric()),
-                iterations = francisIterations ?: iterations,
-                experimentalConfig = ExperimentalConfig(
-                    perfettoConfig = createPerfettoConfig(packageName)
-                ),
-                compilationMode = compilationMode,
-                startupMode = startupMode,
-                setupBlock = setupBlock,
-                measureBlock = measureBlock
-            )
-        } else {
-            macrobenchmarkRule.measureRepeated(
-                packageName = packageName,
-                metrics = metrics,
-                iterations = francisIterations ?: iterations,
-                experimentalConfig = experimentalConfig,
-                compilationMode = compilationMode,
-                startupMode = startupMode,
-                setupBlock = setupBlock,
-                measureBlock = wrapMeasureBlock(measureBlock)
-            )
-        }
+        measureRepeatedInternal(
+            packageName = packageName,
+            metrics = metrics,
+            iterations = iterations,
+            experimentalConfig = experimentalConfig,
+            compilationMode = compilationMode,
+            startupMode = startupMode,
+            setupBlock = setupBlock,
+            measureBlock = measureBlock
+        )
     }
 
-    private fun wrapMeasureBlock(
+    @OptIn(ExperimentalBenchmarkConfigApi::class, ExperimentalMetricApi::class, ExperimentalPerfettoCaptureApi::class)
+    private fun measureRepeatedInternal(
+        packageName: String,
+        metrics: List<Metric>,
+        iterations: Int,
+        experimentalConfig: ExperimentalConfig,
+        compilationMode: CompilationMode,
+        startupMode: StartupMode?,
+        setupBlock: MacrobenchmarkScope.() -> Unit,
         measureBlock: MacrobenchmarkScope.() -> Unit
-    ): MacrobenchmarkScope.() -> Unit = when (francisProfiler) {
-        "simpleperf" -> {
-            {
-                SimpleperfProfiler(simpleperfOutputDir, testName, simpleperfCallGraph).use { profiler ->
-                    profiler.start()
-                    measureBlock()
+    ) {
+        var effectiveMetrics = metrics
+        var effectiveConfig = experimentalConfig
+        var effectiveMeasureBlock = measureBlock
+
+        when (francisProfiler) {
+            "perfetto" -> {
+                effectiveMetrics = listOf(NoOpMetric())
+                effectiveConfig = ExperimentalConfig(perfettoConfig = createPerfettoConfig(packageName))
+            }
+            "simpleperf" -> {
+                effectiveMeasureBlock = {
+                    SimpleperfProfiler(simpleperfOutputDir, testName, simpleperfCallGraph).use { profiler ->
+                        profiler.start()
+                        measureBlock()
+                    }
                 }
             }
         }
-        else -> measureBlock
+
+        macrobenchmarkRule.measureRepeated(
+            packageName = packageName,
+            metrics = effectiveMetrics,
+            iterations = francisIterations ?: iterations,
+            experimentalConfig = effectiveConfig,
+            compilationMode = compilationMode,
+            startupMode = startupMode,
+            setupBlock = setupBlock,
+            measureBlock = effectiveMeasureBlock
+        )
     }
 
     companion object {

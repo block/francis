@@ -148,19 +148,49 @@ class ViewCommand(
     }
 
     private fun convertToGeckoProfile(simpleperfFile: File): File? {
-      val geckoProfileGenerator = findGeckoProfileGenerator()
-      if (geckoProfileGenerator == null) {
-        log(ERROR) { "gecko_profile_generator.py not found in Android NDK. Install NDK 28+ to enable Firefox Profiler viewing." }
+      val simpleperfDir = findSimpleperfDir()
+      if (simpleperfDir == null) {
+        log(ERROR) { "simpleperf tools not found in Android NDK. Install NDK 28+ to enable Firefox Profiler viewing." }
         return null
+      }
+
+      val geckoProfileGenerator = File(simpleperfDir, "gecko_profile_generator.py").absolutePath
+      val binaryCacheBuilder = File(simpleperfDir, "binary_cache_builder.py").absolutePath
+
+      val binaryCacheDir = File(simpleperfFile.parentFile, "binary_cache")
+      if (!binaryCacheDir.exists()) {
+        log { "Building binary cache for symbols..." }
+        try {
+          val cacheProcess = ProcessBuilder(
+            binaryCacheBuilder, "-i", simpleperfFile.absolutePath
+          )
+            .directory(simpleperfFile.parentFile)
+            .redirectErrorStream(true)
+            .start()
+
+          cacheProcess.inputStream.bufferedReader().forEachLine { line ->
+            log { line }
+          }
+
+          val cacheExitCode = cacheProcess.waitFor()
+          if (cacheExitCode != 0) {
+            log(ERROR) { "binary_cache_builder.py failed with exit code $cacheExitCode" }
+          }
+        } catch (e: Exception) {
+          log(ERROR) { "Failed to build binary cache: ${e.message}" }
+        }
       }
 
       val outputFile = File(simpleperfFile.parent, simpleperfFile.nameWithoutExtension + ".gecko-profile.json")
       log { "Converting simpleperf data to gecko profile format..." }
 
       try {
-        val process = ProcessBuilder(
-          geckoProfileGenerator, "-i", simpleperfFile.absolutePath
-        )
+        val command = mutableListOf(geckoProfileGenerator, "-i", simpleperfFile.absolutePath)
+        if (binaryCacheDir.isDirectory) {
+          command.addAll(listOf("--symfs", binaryCacheDir.absolutePath))
+        }
+
+        val process = ProcessBuilder(command)
           .directory(simpleperfFile.parentFile)
           .redirectError(ProcessBuilder.Redirect.INHERIT)
           .start()
@@ -184,7 +214,7 @@ class ViewCommand(
       }
     }
 
-    private fun findGeckoProfileGenerator(): String? {
+    private fun findSimpleperfDir(): File? {
       val androidHome = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT") ?: return null
       val ndkDir = File(androidHome, "ndk")
       if (!ndkDir.isDirectory) return null
@@ -192,9 +222,8 @@ class ViewCommand(
       return ndkDir.listFiles()
         ?.filter { it.isDirectory }
         ?.sortedDescending()
-        ?.map { File(it, "simpleperf/gecko_profile_generator.py") }
-        ?.firstOrNull { it.isFile }
-        ?.absolutePath
+        ?.map { File(it, "simpleperf") }
+        ?.firstOrNull { File(it, "gecko_profile_generator.py").isFile }
     }
 
     private fun openInBrowser(url: String) {

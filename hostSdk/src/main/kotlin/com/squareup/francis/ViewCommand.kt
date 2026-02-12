@@ -10,23 +10,26 @@ import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
 import com.squareup.francis.logging.log
 import com.sun.net.httpserver.HttpServer
+import logcat.LogPriority.ERROR
 import java.io.File
 import java.net.InetSocketAddress
+import java.net.URLEncoder
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class ViewCommand(
   baseOptions: BaseOptions = BaseOptions(),
 ) : CliktCommand(name = "view") {
   override fun help(context: Context) = """
-    Open a Perfetto trace file in ui.perfetto.dev.
+    Open a trace file in the appropriate viewer.
 
-    Starts a temporary local HTTP server that serves an HTML page which uses
-    postMessage to send the trace to Perfetto UI. Press Ctrl+C to stop.
+    For .perfetto-trace files: Opens in ui.perfetto.dev using postMessage.
+    For .simpleperf.data files: Converts to gecko format and opens in profiler.firefox.com.
   """.trimIndent()
 
   private val baseOpts by baseOptions
 
-  private val traceFile: File by argument(help = "Path to the Perfetto trace file (.perfetto-trace)")
+  private val traceFile: File by argument(help = "Path to the trace file (.perfetto-trace or .simpleperf.data)")
     .file(mustExist = true, canBeDir = false, mustBeReadable = true)
 
   private val port: Int by option("-p", "--port", help = "Port for the local HTTP server")
@@ -35,15 +38,25 @@ class ViewCommand(
 
   override fun run() {
     baseOpts.setup()
-    openTraceInPerfetto(traceFile, port)
+    openTrace(traceFile, port)
   }
 
   companion object {
+    fun openTrace(traceFile: File, port: Int = 9001) {
+      when {
+        traceFile.name.endsWith(".perfetto-trace") -> openTraceInPerfetto(traceFile, port)
+        traceFile.name.endsWith(".simpleperf.data") -> openTraceInFirefoxProfiler(traceFile, port)
+        else -> {
+          log(ERROR) { "Unknown file type: ${traceFile.name}. Expected .perfetto-trace or .simpleperf.data" }
+        }
+      }
+    }
+
     fun openTraceInPerfetto(traceFile: File, port: Int = 9001) {
       val traceBytes = traceFile.readBytes()
       val fileName = traceFile.name
 
-      val html = generateHtml(fileName)
+      val html = generatePerfettoHtml(fileName)
       val shutdownLatch = CountDownLatch(1)
 
       val server = HttpServer.create(InetSocketAddress("127.0.0.1", port), 0)
@@ -86,6 +99,104 @@ class ViewCommand(
       server.stop(0)
     }
 
+    fun openTraceInFirefoxProfiler(simpleperfFile: File, port: Int = 9001) {
+      val geckoProfile = convertToGeckoProfile(simpleperfFile)
+      if (geckoProfile == null) {
+        log(ERROR) { "Failed to convert simpleperf data to gecko profile" }
+        return
+      }
+
+      val profileBytes = geckoProfile.readBytes()
+      val fileName = geckoProfile.name
+
+      val fetchedLatch = CountDownLatch(1)
+
+      val server = HttpServer.create(InetSocketAddress("127.0.0.1", port), 0)
+      val actualPort = server.address.port
+
+      server.createContext("/$fileName") { exchange ->
+        log { "${exchange.requestMethod} ${exchange.requestURI}" }
+
+        exchange.responseHeaders.add("Access-Control-Allow-Origin", "*")
+        exchange.responseHeaders.add("Cache-Control", "no-cache")
+        exchange.responseHeaders.add("Content-Type", "application/json")
+
+        exchange.sendResponseHeaders(200, profileBytes.size.toLong())
+        exchange.responseBody.use { it.write(profileBytes) }
+        fetchedLatch.countDown()
+      }
+
+      server.executor = null
+      server.start()
+
+      val profileUrl = "http://127.0.0.1:$actualPort/$fileName"
+      val encodedUrl = URLEncoder.encode(profileUrl, "UTF-8")
+      val firefoxProfilerUrl = "https://profiler.firefox.com/from-url/$encodedUrl"
+
+      log { "Serving profile at $profileUrl" }
+      log { "Opening Firefox Profiler..." }
+
+      openInBrowser(firefoxProfilerUrl)
+
+      val fetched = fetchedLatch.await(2, TimeUnit.MINUTES)
+      if (fetched) {
+        log { "Profile fetched. Shutting down server..." }
+      } else {
+        log { "Timeout waiting for profile fetch. Shutting down server..." }
+      }
+      server.stop(0)
+    }
+
+    private fun convertToGeckoProfile(simpleperfFile: File): File? {
+      val geckoProfileGenerator = findGeckoProfileGenerator()
+      if (geckoProfileGenerator == null) {
+        log(ERROR) { "gecko_profile_generator.py not found in Android NDK. Install NDK 28+ to enable Firefox Profiler viewing." }
+        return null
+      }
+
+      val outputFile = File(simpleperfFile.parent, simpleperfFile.nameWithoutExtension + ".gecko-profile.json")
+      log { "Converting simpleperf data to gecko profile format..." }
+
+      try {
+        val process = ProcessBuilder(
+          geckoProfileGenerator, "-i", simpleperfFile.absolutePath
+        )
+          .directory(simpleperfFile.parentFile)
+          .redirectError(ProcessBuilder.Redirect.INHERIT)
+          .start()
+
+        outputFile.outputStream().use { out ->
+          process.inputStream.copyTo(out)
+        }
+
+        val exitCode = process.waitFor()
+        if (exitCode != 0) {
+          log(ERROR) { "gecko_profile_generator.py failed with exit code $exitCode" }
+          outputFile.delete()
+          return null
+        }
+
+        log { "Gecko profile written to: ${outputFile.absolutePath}" }
+        return outputFile
+      } catch (e: Exception) {
+        log(ERROR) { "Failed to convert to gecko profile: ${e.message}" }
+        return null
+      }
+    }
+
+    private fun findGeckoProfileGenerator(): String? {
+      val androidHome = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT") ?: return null
+      val ndkDir = File(androidHome, "ndk")
+      if (!ndkDir.isDirectory) return null
+
+      return ndkDir.listFiles()
+        ?.filter { it.isDirectory }
+        ?.sortedDescending()
+        ?.map { File(it, "simpleperf/gecko_profile_generator.py") }
+        ?.firstOrNull { it.isFile }
+        ?.absolutePath
+    }
+
     private fun openInBrowser(url: String) {
       val os = System.getProperty("os.name").lowercase()
       val command = when {
@@ -99,7 +210,7 @@ class ViewCommand(
       ProcessBuilder(*command).start()
     }
 
-    private fun generateHtml(fileName: String): String {
+    private fun generatePerfettoHtml(fileName: String): String {
     return """
 <!DOCTYPE html>
 <html>

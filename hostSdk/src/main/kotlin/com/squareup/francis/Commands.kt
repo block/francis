@@ -260,6 +260,11 @@ open class SimpleperfCommand(
     help = "Enable call graph recording. Options: dwarf, fp (frame pointer). Mirrors simpleperf's --call-graph option."
   )
 
+  private val view by option(
+    "--view",
+    help = "Open the profile in Firefox Profiler after collection. Converts to gecko format and opens the first trace."
+  ).flag("--no-view", default = true)
+
   override fun run() {
     baseOpts.setup()
     val callGraphValue = callGraph
@@ -270,6 +275,20 @@ open class SimpleperfCommand(
       override val delegate: RunnerValues get() = runnerOpts
     }
     runBenchmark(baseOpts, optsWithProfiler)
+
+    if (view) {
+      val outputDir = File(optsWithProfiler.hostOutputDir)
+      val simpleperfFile = outputDir.walkTopDown()
+        .filter { it.isFile && it.name.endsWith(".simpleperf.data") }
+        .sortedBy { it.name }
+        .firstOrNull()
+      if (simpleperfFile != null) {
+        log { "Opening profile in Firefox Profiler: ${simpleperfFile.absolutePath}" }
+        ViewCommand.openTraceInFirefoxProfiler(simpleperfFile)
+      } else {
+        log { "No .simpleperf.data files found in ${outputDir.absolutePath}" }
+      }
+    }
   }
 
   open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {

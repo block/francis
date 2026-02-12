@@ -106,7 +106,7 @@ class FrancisBenchmarkRule : TestRule {
             }
             "simpleperf" -> {
                 effectiveMeasureBlock = {
-                    SimpleperfProfiler(simpleperfOutputDir, testName, simpleperfCallGraph).use { profiler ->
+                    SimpleperfProfiler(simpleperfOutputDir, testName, packageName, simpleperfCallGraph).use { profiler ->
                         profiler.start()
                         measureBlock()
                     }

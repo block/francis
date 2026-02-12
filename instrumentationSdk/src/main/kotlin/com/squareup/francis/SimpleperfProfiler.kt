@@ -1,7 +1,6 @@
 package com.squareup.francis
 
 import android.util.Log
-import androidx.test.platform.app.InstrumentationRegistry
 import java.io.Closeable
 
 /**
@@ -9,10 +8,12 @@ import java.io.Closeable
  *
  * @param outputDir Directory to write perf data files. Must be writable by shell (e.g. /data/local/tmp)
  *   since simpleperf runs as a shell process, not as the app.
+ * @param targetPackage The package name of the app to profile (the app under test, not the instrumentation).
  */
 internal class SimpleperfProfiler(
   private val outputDir: String,
   private val testName: String,
+  private val targetPackage: String,
   private val callGraph: String? = null,
 ) : Closeable {
   private val shell = ShellExecutor()
@@ -25,7 +26,6 @@ internal class SimpleperfProfiler(
 
     val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", java.util.Locale.US).format(java.util.Date())
     val outputPath = "$outputDir/${testName}_iter${iteration.toString().padStart(3, '0')}_$timestamp.simpleperf.data"
-    val targetPackage = getTargetPackage()
 
     val eventArgs = if (supportsCpuCycles) emptyList() else listOf("-e", "cpu-clock")
     val callGraphArgs = callGraph?.let { listOf("--call-graph", it) } ?: emptyList()
@@ -92,10 +92,6 @@ internal class SimpleperfProfiler(
         Log.d(TAG, "simpleperf exited with code=${it.exitCode()}")
       }
     }
-  }
-
-  private fun getTargetPackage(): String {
-    return InstrumentationRegistry.getInstrumentation().targetContext.packageName
   }
 
   private val supportsCpuCycles: Boolean by lazy {

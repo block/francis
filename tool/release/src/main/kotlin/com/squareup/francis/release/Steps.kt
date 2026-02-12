@@ -37,7 +37,7 @@ enum class Steps(val stepName: String) {
                 exitProcess(0)
             }
 
-            ctx.artifactsDir.mkdirs()
+            ctx.persistReleaseVersion()
         }
     },
 

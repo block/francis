@@ -10,6 +10,9 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib"))
     implementation(libs.clikt)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.truth)
 }
 
 application {

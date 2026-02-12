@@ -11,14 +11,35 @@ lateinit var ctx: ReleaseContext
 
 class ReleaseContext(val francisDir: File) {
     val gradleProperties: File = francisDir.resolve("gradle.properties")
+    val releasesDir: File = francisDir.resolve("releases")
 
     val currentVersion: String by lazy { readVersion() }
-    val releaseVersion: String by lazy { currentVersion.removeSuffix("-SNAPSHOT") }
+    val releaseVersion: String by lazy { findInProgressRelease() ?: currentVersion.removeSuffix("-SNAPSHOT") }
     val postReleaseVersion: String by lazy { incrementSemver(releaseVersion) }
     val releaseTag: String by lazy { "v$releaseVersion" }
     val releaseBranch: String by lazy { "release/$releaseVersion" }
-    val artifactsDir: File by lazy { francisDir.resolve("releases/$releaseVersion") }
+    val artifactsDir: File by lazy { releasesDir.resolve(releaseVersion) }
     val stepsDir: File by lazy { artifactsDir.resolve("steps") }
+    private val versionFile: File by lazy { artifactsDir.resolve("version") }
+
+    private fun findInProgressRelease(): String? {
+        if (!releasesDir.exists()) return null
+        val candidates = releasesDir.listFiles()?.filter { dir ->
+            dir.isDirectory && dir.resolve("steps").exists() && !isReleaseComplete(dir)
+        } ?: return null
+        return candidates.maxByOrNull { it.lastModified() }?.name
+    }
+
+    private fun isReleaseComplete(releaseDir: File): Boolean {
+        val lastStep = Steps.entries.last()
+        val prefix = "%02d".format(lastStep.ordinal + 1)
+        return releaseDir.resolve("steps/$prefix-${lastStep.stepName}").exists()
+    }
+
+    fun persistReleaseVersion() {
+        artifactsDir.mkdirs()
+        versionFile.writeText(releaseVersion)
+    }
 
     fun readVersion(): String {
         val line = gradleProperties.readLines().find { it.startsWith("francis.version=") }

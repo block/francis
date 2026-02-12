@@ -8,6 +8,7 @@ import com.github.ajalt.clikt.core.parse
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
+import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
@@ -257,8 +258,8 @@ open class SimpleperfCommand(
 
   private val callGraph by option(
     "--call-graph",
-    help = "Enable call graph recording. Options: dwarf, fp (frame pointer). Mirrors simpleperf's --call-graph option."
-  )
+    help = "Call graph recording mode: fp (default, works everywhere) or dwarf (better accuracy for native code, but not always supported). Use --call-graph=none to disable."
+  ).default("fp")
 
   private val view by option(
     "--view",
@@ -267,7 +268,7 @@ open class SimpleperfCommand(
 
   override fun run() {
     baseOpts.setup()
-    val callGraphValue = callGraph
+    val callGraphValue = callGraph.takeIf { it != "none" }
     val optsWithProfiler = object : RunnerValues by runnerOpts {
       override val profiler: String = "simpleperf"
       override val simpleperfCallGraph: String? = callGraphValue

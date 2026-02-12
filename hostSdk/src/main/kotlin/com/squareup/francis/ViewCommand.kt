@@ -165,47 +165,37 @@ class ViewCommand(
       val binaryCacheDir = File(simpleperfFile.parentFile, "binary_cache")
       if (!binaryCacheDir.exists()) {
         log { "Building binary cache for symbols..." }
+        val wasRoot = adb.cmdStdout("shell", "id", "-u").trim() == "0"
+        if (!wasRoot) {
+          adb.cmdRun("root")
+        }
         try {
-          val wasRoot = adb.cmdStdout("shell", "id", "-u").trim() == "0"
+          subproc.run(binaryCacheBuilder, "-i", simpleperfFile.absolutePath, "--disable_adb_root") {
+            directory = simpleperfFile.parentFile
+          }
+          deduplicateBinaryCache(binaryCacheDir)
+        } finally {
           if (!wasRoot) {
-            adb.cmdRun("root")
+            adb.cmdRun("unroot")
           }
-          try {
-            subproc.run(binaryCacheBuilder, "-i", simpleperfFile.absolutePath, "--disable_adb_root") {
-              directory = simpleperfFile.parentFile
-            }
-            deduplicateBinaryCache(binaryCacheDir)
-          } finally {
-            if (!wasRoot) {
-              adb.cmdRun("unroot")
-            }
-          }
-        } catch (e: Exception) {
-          log(ERROR) { "Failed to build binary cache: ${e.message}" }
         }
       }
 
       val outputFile = File(simpleperfFile.parent, simpleperfFile.nameWithoutExtension + ".gecko-profile.json")
       log { "Converting simpleperf data to gecko profile format..." }
 
-      try {
-        val command = mutableListOf(geckoProfileGenerator, "-i", simpleperfFile.absolutePath)
-        if (binaryCacheDir.isDirectory) {
-          command.addAll(listOf("--symfs", binaryCacheDir.absolutePath))
-        }
-
-        subproc.run(*command.toTypedArray()) {
-          directory = simpleperfFile.parentFile
-          stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.ToFile(outputFile)))
-        }
-
-        log { "Gecko profile written to: ${outputFile.absolutePath}" }
-        return outputFile
-      } catch (e: Exception) {
-        log(ERROR) { "Failed to convert to gecko profile: ${e.message}" }
-        outputFile.delete()
-        return null
+      val command = mutableListOf(geckoProfileGenerator, "-i", simpleperfFile.absolutePath)
+      if (binaryCacheDir.isDirectory) {
+        command.addAll(listOf("--symfs", binaryCacheDir.absolutePath))
       }
+
+      subproc.run(*command.toTypedArray()) {
+        directory = simpleperfFile.parentFile
+        stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.ToFile(outputFile)))
+      }
+
+      log { "Gecko profile written to: ${outputFile.absolutePath}" }
+      return outputFile
     }
 
     private fun deduplicateBinaryCache(binaryCacheDir: File) {
@@ -220,29 +210,25 @@ class ViewCommand(
         .filter { it.isFile && !Files.isSymbolicLink(it.toPath()) }
         .forEach { file ->
           total++
-          try {
-            val hash = file.inputStream().use { input ->
-              val digest = MessageDigest.getInstance("SHA-256")
-              val buffer = ByteArray(8192)
-              var read: Int
-              while (input.read(buffer).also { read = it } != -1) {
-                digest.update(buffer, 0, read)
-              }
-              digest.digest().joinToString("") { "%02x".format(it) }
+          val hash = file.inputStream().use { input ->
+            val digest = MessageDigest.getInstance("SHA-256")
+            val buffer = ByteArray(8192)
+            var read: Int
+            while (input.read(buffer).also { read = it } != -1) {
+              digest.update(buffer, 0, read)
             }
-
-            val cached = File(globalCache, hash)
-            if (!cached.exists()) {
-              file.copyTo(cached)
-            } else {
-              deduped++
-              dedupedBytes += file.length()
-            }
-            file.delete()
-            Files.createSymbolicLink(file.toPath(), cached.toPath())
-          } catch (e: Exception) {
-            log(ERROR) { "Failed to deduplicate ${file.name}: ${e.message}" }
+            digest.digest().joinToString("") { "%02x".format(it) }
           }
+
+          val cached = File(globalCache, hash)
+          if (!cached.exists()) {
+            file.copyTo(cached)
+          } else {
+            deduped++
+            dedupedBytes += file.length()
+          }
+          file.delete()
+          Files.createSymbolicLink(file.toPath(), cached.toPath())
         }
 
       if (deduped > 0) {

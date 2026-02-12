@@ -29,9 +29,17 @@ internal class SimpleperfProfiler(
 
     val eventArgs = if (supportsCpuCycles) emptyList() else listOf("-e", "cpu-clock")
     val callGraphArgs = callGraph?.let { listOf("--call-graph", it) } ?: emptyList()
-    process = shell.execute(
-      "simpleperf", "record", *callGraphArgs.toTypedArray(), *eventArgs.toTypedArray(), "--app", targetPackage, "-o", outputPath
+    val maybeRoot = if (isRootAvailable) listOf("su", "0") else emptyList()
+    val command = listOf(
+      *maybeRoot.toTypedArray(),
+      "simpleperf",
+      "record",
+      *callGraphArgs.toTypedArray(),
+      *eventArgs.toTypedArray(),
+      "--app", targetPackage,
+      "-o", outputPath
     )
+    process = shell.execute(*command.toTypedArray())
     simpleperfPid = process!!.pid()
 
     // This doesn't necessarily mean that simpleperf is actually capturing data yet. We could be
@@ -100,6 +108,13 @@ internal class SimpleperfProfiler(
     val result = simpleperfList.lines().any { it.trim() == "cpu-cycles" }
     Log.d(TAG, "supportsCpuCycles: $result")
     result
+  }
+
+  private val isRootAvailable: Boolean by lazy {
+    val result = shell.execute("su", "0", "id").readText()
+    val available = result.contains("uid=0")
+    Log.d(TAG, "isRootAvailable: $available (su 0 id returned: $result)")
+    available
   }
 
   companion object {

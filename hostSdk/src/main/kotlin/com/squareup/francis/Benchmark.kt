@@ -99,20 +99,17 @@ class Benchmark(
       throw PithyException(1, "Instrumentation failed: ${result.message}")
     }
 
-    val testOutputFiles = adb.shellStdout("ls", deviceOutputDir) { logPriority = LogPriority.DEBUG }
-      .lines()
-      .filter { it.isNotBlank() }
-    for (file in testOutputFiles) {
-      adb.cmdRun("pull", "$deviceOutputDir/$file", runnerVals.hostOutputDir)
-    }
-    simpleperfOutputDir?.let { dir ->
-      val files = adb.shellStdout("ls", dir) { logPriority = LogPriority.DEBUG }
-        .lines()
-        .filter { it.isNotBlank() }
-      for (file in files) {
-        adb.cmdRun("pull", "$dir/$file", runnerVals.hostOutputDir)
-      }
-    }
+    pullDirFlattened(deviceOutputDir, runnerVals.hostOutputDir)
+    simpleperfOutputDir?.let { pullDirFlattened(it, runnerVals.hostOutputDir) }
+  }
+
+  /**
+   * Pull all files from a device directory to a host directory.
+   * We pull the entire directory at once to avoid race conditions with temp files that may
+   * be deleted between listing and pulling.
+   */
+  private fun pullDirFlattened(deviceDir: String, hostDir: String) {
+    adb.cmdRun("pull", "$deviceDir/.", hostDir) { logPriority = LogPriority.DEBUG }
   }
 
   private fun packageNameFromApk(apk: String): String {

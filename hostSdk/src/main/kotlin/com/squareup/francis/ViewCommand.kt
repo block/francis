@@ -13,6 +13,8 @@ import com.sun.net.httpserver.HttpServer
 import logcat.LogPriority.ERROR
 import java.io.File
 import java.net.InetSocketAddress
+import java.nio.file.Files
+import java.security.MessageDigest
 import java.net.URLEncoder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -175,6 +177,8 @@ class ViewCommand(
           val cacheExitCode = cacheProcess.waitFor()
           if (cacheExitCode != 0) {
             log(ERROR) { "binary_cache_builder.py failed with exit code $cacheExitCode" }
+          } else {
+            deduplicateBinaryCache(binaryCacheDir)
           }
         } catch (e: Exception) {
           log(ERROR) { "Failed to build binary cache: ${e.message}" }
@@ -211,6 +215,49 @@ class ViewCommand(
       } catch (e: Exception) {
         log(ERROR) { "Failed to convert to gecko profile: ${e.message}" }
         return null
+      }
+    }
+
+    private fun deduplicateBinaryCache(binaryCacheDir: File) {
+      val globalCache = File(Xdg.francisCache, "symbols")
+      globalCache.mkdirs()
+
+      var deduped = 0
+      var dedupedBytes = 0L
+      var total = 0
+
+      binaryCacheDir.walkTopDown()
+        .filter { it.isFile && !Files.isSymbolicLink(it.toPath()) }
+        .forEach { file ->
+          total++
+          try {
+            val hash = file.inputStream().use { input ->
+              val digest = MessageDigest.getInstance("SHA-256")
+              val buffer = ByteArray(8192)
+              var read: Int
+              while (input.read(buffer).also { read = it } != -1) {
+                digest.update(buffer, 0, read)
+              }
+              digest.digest().joinToString("") { "%02x".format(it) }
+            }
+
+            val cached = File(globalCache, hash)
+            if (!cached.exists()) {
+              file.copyTo(cached)
+            } else {
+              deduped++
+              dedupedBytes += file.length()
+            }
+            file.delete()
+            Files.createSymbolicLink(file.toPath(), cached.toPath())
+          } catch (e: Exception) {
+            log(ERROR) { "Failed to deduplicate ${file.name}: ${e.message}" }
+          }
+        }
+
+      if (deduped > 0) {
+        val savedMb = dedupedBytes / (1024 * 1024)
+        log { "Deduplicated $deduped of $total binaries, saved ${savedMb}MB using global symbol cache" }
       }
     }
 

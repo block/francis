@@ -9,6 +9,9 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
 import com.squareup.francis.logging.log
+import com.squareup.francis.process.OutputRedirectSpec
+import com.squareup.francis.process.OutputTarget
+import com.squareup.francis.process.subproc
 import com.sun.net.httpserver.HttpServer
 import logcat.LogPriority.ERROR
 import java.io.File
@@ -163,22 +166,19 @@ class ViewCommand(
       if (!binaryCacheDir.exists()) {
         log { "Building binary cache for symbols..." }
         try {
-          val cacheProcess = ProcessBuilder(
-            binaryCacheBuilder, "-i", simpleperfFile.absolutePath
-          )
-            .directory(simpleperfFile.parentFile)
-            .redirectErrorStream(true)
-            .start()
-
-          cacheProcess.inputStream.bufferedReader().forEachLine { line ->
-            log { line }
+          val wasRoot = adb.cmdStdout("shell", "id", "-u").trim() == "0"
+          if (!wasRoot) {
+            adb.cmdRun("root")
           }
-
-          val cacheExitCode = cacheProcess.waitFor()
-          if (cacheExitCode != 0) {
-            log(ERROR) { "binary_cache_builder.py failed with exit code $cacheExitCode" }
-          } else {
+          try {
+            subproc.run(binaryCacheBuilder, "-i", simpleperfFile.absolutePath, "--disable_adb_root") {
+              directory = simpleperfFile.parentFile
+            }
             deduplicateBinaryCache(binaryCacheDir)
+          } finally {
+            if (!wasRoot) {
+              adb.cmdRun("unroot")
+            }
           }
         } catch (e: Exception) {
           log(ERROR) { "Failed to build binary cache: ${e.message}" }
@@ -194,26 +194,16 @@ class ViewCommand(
           command.addAll(listOf("--symfs", binaryCacheDir.absolutePath))
         }
 
-        val process = ProcessBuilder(command)
-          .directory(simpleperfFile.parentFile)
-          .redirectError(ProcessBuilder.Redirect.INHERIT)
-          .start()
-
-        outputFile.outputStream().use { out ->
-          process.inputStream.copyTo(out)
-        }
-
-        val exitCode = process.waitFor()
-        if (exitCode != 0) {
-          log(ERROR) { "gecko_profile_generator.py failed with exit code $exitCode" }
-          outputFile.delete()
-          return null
+        subproc.run(*command.toTypedArray()) {
+          directory = simpleperfFile.parentFile
+          stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.ToFile(outputFile)))
         }
 
         log { "Gecko profile written to: ${outputFile.absolutePath}" }
         return outputFile
       } catch (e: Exception) {
         log(ERROR) { "Failed to convert to gecko profile: ${e.message}" }
+        outputFile.delete()
         return null
       }
     }

@@ -78,7 +78,12 @@ internal class SimpleperfProfiler(
       }
     }
 
-    val kill = shell.execute("kill", "-INT", simpleperfPid.toString())
+    val killCommand = if (isRootAvailable) {
+      listOf("su", "0", "kill", "-INT", simpleperfPid.toString())
+    } else {
+      listOf("kill", "-INT", simpleperfPid.toString())
+    }
+    val kill = shell.execute(*killCommand.toTypedArray())
     val exitCode = kill.exitCode()
     if (exitCode != 0) {
       Log.e(TAG, "Failed to signal simpleperf pid=$simpleperfPid")

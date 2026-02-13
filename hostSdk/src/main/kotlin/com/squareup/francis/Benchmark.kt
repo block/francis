@@ -30,6 +30,14 @@ class Benchmark(
     }
   }
 
+  // Check if su is available on the device (for simpleperf cleanup)
+  private val isRootAvailable: Boolean by lazy {
+    val result = adb.shellStdout("su", "0", "id", allowedExitCodes = listOf(0, 1, 255)) {
+      logPriority = LogPriority.DEBUG
+    }
+    result.contains("uid=0")
+  }
+
   // Path on device where custom perfetto config is pushed
   val devicePerfettoConfigPath: String? by lazy {
     runnerVals.perfettoConfigPath?.let {
@@ -58,8 +66,9 @@ class Benchmark(
   fun run() {
     adb.shellRun("rm", "-rf", deviceOutputDir) { logPriority = LogPriority.DEBUG }
     simpleperfOutputDir?.let {
-      adb.shellRun("rm", "-rf", it) { logPriority = LogPriority.DEBUG }
-      adb.shellRun("mkdir", "-p", it) { logPriority = LogPriority.DEBUG }
+      // Files created by simpleperf with su are owned by root, so we need su to delete them
+      adb.shellRun("rm", "-rf", it, forceRoot = isRootAvailable) { logPriority = LogPriority.DEBUG }
+      adb.shellRun("mkdir", "-p", it, forceRoot = isRootAvailable) { logPriority = LogPriority.DEBUG }
     }
     pushPerfettoConfigIfNeeded()
     ensureInstalled(appApk)

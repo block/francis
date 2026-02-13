@@ -11,19 +11,18 @@ class ReleaseContextTest {
     val tempFolder = TemporaryFolder()
 
     @Test
-    fun `releaseVersion uses in-progress release when gradle properties has been bumped`() {
+    fun `releaseVersion uses active release when version file exists`() {
         val francisDir = tempFolder.newFolder("francis")
         francisDir.resolve("gradle.properties").writeText("francis.version=0.0.15-SNAPSHOT\n")
 
-        val releasesDir = francisDir.resolve("releases")
-        val release014 = releasesDir.resolve("0.0.14/steps")
-        release014.mkdirs()
-        release014.resolve("01-prompt").writeText("done\n")
+        val activeDir = francisDir.resolve("releases/active")
+        activeDir.mkdirs()
+        activeDir.resolve("version").writeText("0.0.14")
 
         val context = ReleaseContext(francisDir)
 
         assertThat(context.releaseVersion).isEqualTo("0.0.14")
-        assertThat(context.artifactsDir.name).isEqualTo("0.0.14")
+        assertThat(context.artifactsDir.name).isEqualTo("active")
     }
 
     @Test
@@ -37,7 +36,7 @@ class ReleaseContextTest {
     }
 
     @Test
-    fun `releaseVersion ignores completed releases`() {
+    fun `releaseVersion ignores completed releases without active directory`() {
         val francisDir = tempFolder.newFolder("francis")
         francisDir.resolve("gradle.properties").writeText("francis.version=0.0.15-SNAPSHOT\n")
 
@@ -52,16 +51,31 @@ class ReleaseContextTest {
     }
 
     @Test
-    fun `persistReleaseVersion creates version file`() {
+    fun `persistReleaseVersion creates version file in active directory`() {
         val francisDir = tempFolder.newFolder("francis")
         francisDir.resolve("gradle.properties").writeText("francis.version=0.0.14-SNAPSHOT\n")
 
         val context = ReleaseContext(francisDir)
         context.persistReleaseVersion()
 
-        val versionFile = francisDir.resolve("releases/0.0.14/version")
+        val versionFile = francisDir.resolve("releases/active/version")
         assertThat(versionFile.exists()).isTrue()
         assertThat(versionFile.readText()).isEqualTo("0.0.14")
+    }
+
+    @Test
+    fun `finalizeRelease renames active directory to version`() {
+        val francisDir = tempFolder.newFolder("francis")
+        francisDir.resolve("gradle.properties").writeText("francis.version=0.0.14-SNAPSHOT\n")
+
+        val context = ReleaseContext(francisDir)
+        context.persistReleaseVersion()
+
+        context.finalizeRelease()
+
+        assertThat(francisDir.resolve("releases/active").exists()).isFalse()
+        assertThat(francisDir.resolve("releases/0.0.14/version").exists()).isTrue()
+        assertThat(francisDir.resolve("releases/0.0.14/version").readText()).isEqualTo("0.0.14")
     }
 
     @Test

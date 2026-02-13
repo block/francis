@@ -12,33 +12,31 @@ lateinit var ctx: ReleaseContext
 class ReleaseContext(val francisDir: File) {
     val gradleProperties: File = francisDir.resolve("gradle.properties")
     val releasesDir: File = francisDir.resolve("releases")
+    val activeDir: File = releasesDir.resolve("active")
 
     val currentVersion: String by lazy { readVersion() }
-    val releaseVersion: String by lazy { findInProgressRelease() ?: currentVersion.removeSuffix("-SNAPSHOT") }
+    val releaseVersion: String by lazy { readActiveReleaseVersion() ?: currentVersion.removeSuffix("-SNAPSHOT") }
     val postReleaseVersion: String by lazy { incrementSemver(releaseVersion) }
     val releaseTag: String by lazy { "v$releaseVersion" }
     val releaseBranch: String by lazy { "release/$releaseVersion" }
-    val artifactsDir: File by lazy { releasesDir.resolve(releaseVersion) }
-    val stepsDir: File by lazy { artifactsDir.resolve("steps") }
-    private val versionFile: File by lazy { artifactsDir.resolve("version") }
+    val artifactsDir: File get() = activeDir
+    val stepsDir: File get() = activeDir.resolve("steps")
+    private val versionFile: File get() = activeDir.resolve("version")
 
-    private fun findInProgressRelease(): String? {
-        if (!releasesDir.exists()) return null
-        val candidates = releasesDir.listFiles()?.filter { dir ->
-            dir.isDirectory && dir.resolve("steps").exists() && !isReleaseComplete(dir)
-        } ?: return null
-        return candidates.maxByOrNull { it.lastModified() }?.name
-    }
-
-    private fun isReleaseComplete(releaseDir: File): Boolean {
-        val lastStep = Steps.entries.last()
-        val prefix = "%02d".format(lastStep.ordinal + 1)
-        return releaseDir.resolve("steps/$prefix-${lastStep.stepName}").exists()
+    private fun readActiveReleaseVersion(): String? {
+        val file = activeDir.resolve("version")
+        return if (file.exists()) file.readText().trim() else null
     }
 
     fun persistReleaseVersion() {
-        artifactsDir.mkdirs()
+        activeDir.mkdirs()
         versionFile.writeText(releaseVersion)
+    }
+
+    fun finalizeRelease() {
+        val finalDir = releasesDir.resolve(releaseVersion)
+        require(!finalDir.exists()) { "Release directory already exists: $finalDir" }
+        check(activeDir.renameTo(finalDir)) { "Failed to rename $activeDir to $finalDir" }
     }
 
     fun readVersion(): String {

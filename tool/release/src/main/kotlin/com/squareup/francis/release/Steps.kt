@@ -24,7 +24,7 @@ enum class Steps(val stepName: String) {
             println("    • Merge to main and bump version")
             println()
             println("To abandon this release later, run:")
-            println("  rm -r releases/${ctx.releaseVersion}")
+            println("  rm -r releases/active")
             println("  git checkout main && git branch -D ${ctx.releaseBranch} && git push origin --delete ${ctx.releaseBranch}")
             println("  git tag -d ${ctx.releaseTag} && git push origin --delete ${ctx.releaseTag}")
             println()
@@ -128,6 +128,8 @@ enum class Steps(val stepName: String) {
             println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/${ctx.releaseVersion}")
             println("  Homebrew:              https://github.com/block/homebrew-tap/blob/main/Formula/francis.rb")
             println()
+
+            ctx.finalizeRelease()
         }
     };
 

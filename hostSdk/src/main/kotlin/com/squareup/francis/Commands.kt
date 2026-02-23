@@ -266,8 +266,6 @@ open class PerfettoCommand(
     } else {
       log { "Tracing all apps (no --app specified)" }
     }
-    log(INFO) { "Press Ctrl+C to stop tracing." }
-
     // Run perfetto with -t for PTY (so Ctrl+C sends SIGINT to stop tracing).
     // We use `cat config | perfetto` instead of `perfetto < config` because SELinux
     // blocks the perfetto domain from reading shell_data_file labeled files directly.
@@ -277,17 +275,9 @@ open class PerfettoCommand(
       "cat $deviceConfigPath | perfetto --txt -c - -o $deviceTracePath"
     ) {
       stdinRedirect = InputRedirectSpec.INHERIT
-      stdoutRedirect = OutputRedirectSpec.INHERIT
-      stderrRedirect = OutputRedirectSpec.INHERIT
-      logPriority = INFO
     }
 
-    Runtime.getRuntime().addShutdownHook(Thread {
-      if (perfettoProc.isAlive) {
-        perfettoProc.destroy()
-      }
-    })
-
+    log(INFO) { "Press Ctrl+C to stop tracing." }
     perfettoProc.waitFor()
 
     // Clean up config file
@@ -402,28 +392,19 @@ open class SimpleperfCommand(
       useRoot = isRootAvailable,
     ))
 
-    log { "Starting simpleperf profiling..." }
+    log(INFO) { "Starting simpleperf profiling..." }
     if (appPackage != null) {
       log { "Profiling app: $appPackage" }
     } else {
       log { "Profiling system-wide (no --app specified)" }
     }
-    log { "Press Ctrl+C to stop profiling." }
 
     // Run simpleperf with PTY for Ctrl+C signal handling
     val simpleperfProc = adb.cmdStart("shell", "-t", simpleperfCmd) {
       stdinRedirect = InputRedirectSpec.INHERIT
-      stdoutRedirect = OutputRedirectSpec.INHERIT
-      stderrRedirect = OutputRedirectSpec.INHERIT
-      logPriority = INFO
     }
 
-    Runtime.getRuntime().addShutdownHook(Thread {
-      if (simpleperfProc.isAlive) {
-        simpleperfProc.destroy()
-      }
-    })
-
+    log(INFO) { "Press Ctrl+C to stop profiling." }
     simpleperfProc.waitFor()
 
     log { "Pulling profile from device..." }

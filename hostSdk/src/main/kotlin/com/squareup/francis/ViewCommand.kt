@@ -170,7 +170,7 @@ class ViewCommand(
           adb.cmdRun("root")
         }
         try {
-          subproc.run(binaryCacheBuilder, "-i", simpleperfFile.absolutePath, "--disable_adb_root") {
+          subproc.run(binaryCacheBuilder, "-i", simpleperfFile.absolutePath) {
             directory = simpleperfFile.parentFile
           }
           deduplicateBinaryCache(binaryCacheDir)

@@ -27,17 +27,12 @@ internal class SimpleperfProfiler(
     val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", java.util.Locale.US).format(java.util.Date())
     val outputPath = "$outputDir/${testName}_iter${iteration.toString().padStart(3, '0')}_$timestamp.simpleperf.data"
 
-    val eventArgs = if (supportsCpuCycles) emptyList() else listOf("-e", "cpu-clock")
-    val callGraphArgs = callGraph?.let { listOf("--call-graph", it) } ?: emptyList()
-    val maybeRoot = if (isRootAvailable) listOf("su", "0") else emptyList()
-    val command = listOf(
-      *maybeRoot.toTypedArray(),
-      "simpleperf",
-      "record",
-      *callGraphArgs.toTypedArray(),
-      *eventArgs.toTypedArray(),
-      "--app", targetPackage,
-      "-o", outputPath
+    val command = SimpleperfUtils.buildRecordCommand(
+      outputPath = outputPath,
+      supportsCpuCycles = supportsCpuCycles,
+      callGraph = callGraph,
+      targetPackage = targetPackage,
+      useRoot = isRootAvailable,
     )
     process = shell.execute(*command.toTypedArray())
     simpleperfPid = process!!.pid()

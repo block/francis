@@ -16,6 +16,7 @@ import com.github.ajalt.clikt.parameters.types.file
 import com.squareup.francis.logging.log
 import com.squareup.francis.process.InputRedirectSpec
 import com.squareup.francis.process.OutputRedirectSpec
+import com.squareup.francis.process.shellEscape
 import logcat.LogPriority
 import logcat.LogPriority.INFO
 import logcat.LogPriority.WARN
@@ -387,22 +388,19 @@ open class SimpleperfCommand(
     // Check if cpu-cycles event is supported, else use cpu-clock (same as instrumented path)
     val simpleperfList = adb.shellStdout("simpleperf", "list", "hw") { logPriority = LogPriority.DEBUG }
     val supportsCpuCycles = SimpleperfUtils.supportsCpuCycles(simpleperfList)
-    val eventArgs = if (supportsCpuCycles) "" else "-e cpu-clock"
 
-    // Build call graph args (same as instrumented path)
-    val callGraphArgs = if (callGraph != "none") "--call-graph $callGraph" else ""
+    // Check if root is available
+    val isRootAvailable = adb.shellStdout("su", "0", "id", allowedExitCodes = listOf(0, 1, 255)) {
+      logPriority = LogPriority.DEBUG
+    }.contains("uid=0")
 
-    // Build app targeting args
-    val appArgs = appPackage?.let { "--app $it" } ?: "-a"  // -a for system-wide
-
-    // Build the full command (matching instrumented path structure)
-    val simpleperfCmd = listOf(
-      "simpleperf", "record",
-      callGraphArgs,
-      eventArgs,
-      appArgs,
-      "-o", deviceTracePath
-    ).filter { it.isNotBlank() }.joinToString(" ")
+    val simpleperfCmd = shellEscape(SimpleperfUtils.buildRecordCommand(
+      outputPath = deviceTracePath,
+      supportsCpuCycles = supportsCpuCycles,
+      callGraph = callGraph.takeIf { it != "none" },
+      targetPackage = appPackage,
+      useRoot = isRootAvailable,
+    ))
 
     log { "Starting simpleperf profiling..." }
     if (appPackage != null) {

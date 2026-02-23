@@ -110,7 +110,7 @@ internal class SimpleperfProfiler(
   private val supportsCpuCycles: Boolean by lazy {
     val simpleperfList = shell.execute("simpleperf", "list", "hw").readText()
     Log.d(TAG, "simpleperfList: $simpleperfList")
-    val result = simpleperfList.lines().any { it.trim() == "cpu-cycles" }
+    val result = SimpleperfUtils.supportsCpuCycles(simpleperfList)
     Log.d(TAG, "supportsCpuCycles: $result")
     result
   }

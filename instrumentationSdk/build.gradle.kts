@@ -30,6 +30,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":shared"))
     implementation("androidx.test.ext:junit:1.1.5")
     implementation("androidx.benchmark:benchmark-macro-junit4:1.4.1")
 }

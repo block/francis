@@ -241,16 +241,16 @@ open class PerfettoCommand(
     }
 
     val configText = perfettoConfigFile?.readText()
-      ?: if (appPackage != null) PerfettoConfig.forPackage(appPackage) else PerfettoConfig.forAllApps()
+      ?: if (appPackage != null) PerfettoConfigTemplate.forPackage(appPackage) else PerfettoConfigTemplate.forAllApps()
 
-    val deviceConfigPath = "$DEVICE_FRANCIS_DIR/perfetto-config.txt"
+    val deviceConfigPath = "${FrancisConstants.DEVICE_FRANCIS_DIR}/perfetto-config.txt"
     val deviceTracePath = "/data/misc/perfetto-traces/francis-trace.perfetto-trace"
     val outputDir = File(runnerOpts.hostOutputDir)
     outputDir.mkdirs()
     val hostTraceFile = File(outputDir, "trace.perfetto-trace")
 
     // Push config to device
-    adb.shellRun("mkdir", "-p", DEVICE_FRANCIS_DIR) { logPriority = LogPriority.DEBUG }
+    adb.shellRun("mkdir", "-p", FrancisConstants.DEVICE_FRANCIS_DIR) { logPriority = LogPriority.DEBUG }
     val tempConfigFile = File.createTempFile("perfetto-config", ".txt")
     try {
       tempConfigFile.writeText(configText)
@@ -377,16 +377,16 @@ open class SimpleperfCommand(
       }
     }
 
-    val deviceTracePath = "$DEVICE_FRANCIS_DIR/perf.data"
+    val deviceTracePath = "${FrancisConstants.DEVICE_FRANCIS_DIR}/perf.data"
     val outputDir = File(runnerOpts.hostOutputDir)
     outputDir.mkdirs()
     val hostTraceFile = File(outputDir, "perf.simpleperf.data")
 
-    adb.shellRun("mkdir", "-p", DEVICE_FRANCIS_DIR) { logPriority = LogPriority.DEBUG }
+    adb.shellRun("mkdir", "-p", FrancisConstants.DEVICE_FRANCIS_DIR) { logPriority = LogPriority.DEBUG }
 
     // Check if cpu-cycles event is supported, else use cpu-clock (same as instrumented path)
     val simpleperfList = adb.shellStdout("simpleperf", "list", "hw") { logPriority = LogPriority.DEBUG }
-    val supportsCpuCycles = simpleperfList.lines().any { it.trim() == "cpu-cycles" }
+    val supportsCpuCycles = SimpleperfUtils.supportsCpuCycles(simpleperfList)
     val eventArgs = if (supportsCpuCycles) "" else "-e cpu-clock"
 
     // Build call graph args (same as instrumented path)

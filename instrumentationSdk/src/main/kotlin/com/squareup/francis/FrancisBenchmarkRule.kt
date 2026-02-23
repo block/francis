@@ -160,63 +160,8 @@ class FrancisBenchmarkRule : TestRule {
         private fun createPerfettoConfig(packageName: String): PerfettoConfig {
             val configText = francisPerfettoConfigPath?.let { path ->
                 java.io.File(path).readText()
-            } ?: DEFAULT_PERFETTO_CONFIG.replace("{PACKAGE}", packageName)
+            } ?: PerfettoConfigTemplate.forPackage(packageName)
             return PerfettoConfig.Text(configText)
         }
-
-        private val DEFAULT_PERFETTO_CONFIG = """
-            buffers {
-                size_kb: 65536
-                fill_policy: RING_BUFFER
-            }
-            buffers {
-                size_kb: 4096
-                fill_policy: RING_BUFFER
-            }
-            data_sources {
-                config {
-                    name: "linux.ftrace"
-                    target_buffer: 0
-                    ftrace_config {
-                        ftrace_events: "sched/sched_switch"
-                        ftrace_events: "sched/sched_wakeup"
-                        ftrace_events: "sched/sched_waking"
-                        ftrace_events: "sched/sched_blocked_reason"
-                        ftrace_events: "power/cpu_frequency"
-                        ftrace_events: "power/cpu_idle"
-                        ftrace_events: "power/suspend_resume"
-                        atrace_categories: "am"
-                        atrace_categories: "dalvik"
-                        atrace_categories: "gfx"
-                        atrace_categories: "input"
-                        atrace_categories: "pm"
-                        atrace_categories: "res"
-                        atrace_categories: "sched"
-                        atrace_categories: "view"
-                        atrace_categories: "wm"
-                        atrace_apps: "{PACKAGE}"
-                    }
-                }
-            }
-            data_sources {
-                config {
-                    name: "linux.process_stats"
-                    target_buffer: 1
-                    process_stats_config {
-                        scan_all_processes_on_start: true
-                        proc_stats_poll_ms: 1000
-                    }
-                }
-            }
-            data_sources {
-                config {
-                    name: "android.packages_list"
-                    target_buffer: 1
-                }
-            }
-            write_into_file: true
-            file_write_period_ms: 2500
-            flush_period_ms: 5000
-        """.trimIndent()
     }
 }

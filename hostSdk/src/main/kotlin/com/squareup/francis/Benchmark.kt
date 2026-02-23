@@ -23,7 +23,7 @@ class Benchmark(
   // Only used with simpleperf
   val simpleperfOutputDir: String? by lazy {
     if (runnerVals.profiler == "simpleperf") {
-      "$DEVICE_FRANCIS_DIR/$instrumentationPackage"
+      "${FrancisConstants.DEVICE_FRANCIS_DIR}/$instrumentationPackage"
     } else {
       null
     }
@@ -40,7 +40,7 @@ class Benchmark(
   // Path on device where custom perfetto config is pushed
   val devicePerfettoConfigPath: String? by lazy {
     runnerVals.perfettoConfigPath?.let {
-      "$DEVICE_FRANCIS_DIR/perfetto-config.textproto"
+      "${FrancisConstants.DEVICE_FRANCIS_DIR}/perfetto-config.textproto"
     }
   }
 

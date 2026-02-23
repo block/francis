@@ -12,7 +12,7 @@ import java.io.File
 
 val adb by lazy { Adb(subproc) }
 
-const val DEVICE_FRANCIS_DIR = "/data/local/tmp/.francis"
+
 
 private val buildTools = File("${System.getenv("ANDROID_HOME")}/build-tools")
 private val latestBuildTools = "$buildTools/${buildTools.list()!!.max()}"

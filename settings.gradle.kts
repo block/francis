@@ -18,6 +18,7 @@ dependencyResolutionManagement {
 include("demo")
 include("hostSdk")
 include("instrumentationSdk")
+include("shared")
 include("main")
 include("demo-app")
 include("demo-instrumentation")

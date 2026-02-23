@@ -7,8 +7,24 @@ import com.squareup.francis.process.subproc
 import com.squareup.francis.process.TeeProcess
 import com.squareup.francis.process.TeeProcessBuilder
 import com.squareup.francis.process.shellEscape
+import logcat.LogPriority
+import java.io.File
 
 val adb by lazy { Adb(subproc) }
+
+const val DEVICE_FRANCIS_DIR = "/data/local/tmp/.francis"
+
+private val buildTools = File("${System.getenv("ANDROID_HOME")}/build-tools")
+private val latestBuildTools = "$buildTools/${buildTools.list()!!.max()}"
+private val aapt2 = "$latestBuildTools/aapt2"
+
+fun packageNameFromApk(apk: String): String {
+  return subproc.stdout(aapt2, "dump", "badging", apk) { logPriority = LogPriority.DEBUG }
+    .lines()
+    .first { it.startsWith("package:") }
+    .substringAfter("name='")
+    .substringBefore("'")
+}
 
 class Adb(
   private val subproc: SubProc,

@@ -8,7 +8,6 @@ import com.squareup.francis.process.OutputRedirectSpec
 import com.squareup.francis.process.subproc
 import java.io.File
 
-private const val DEVICE_FRANCIS_DIR = "/data/local/tmp/.francis"
 
 class Benchmark(
   val baseVals: BaseValues,
@@ -121,14 +120,6 @@ class Benchmark(
     adb.cmdRun("pull", "$deviceDir/.", hostDir) { logPriority = LogPriority.DEBUG }
   }
 
-  private fun packageNameFromApk(apk: String): String {
-    return subproc.stdout(aapt2, "dump", "badging", apk) { logPriority = LogPriority.DEBUG }
-      .lines()
-      .first { it.startsWith("package:") }
-      .substringAfter("name='")
-      .substringBefore("'")
-  }
-
   private fun pushPerfettoConfigIfNeeded() {
     val hostPath = runnerVals.perfettoConfigPath ?: return
     val devicePath = devicePerfettoConfigPath ?: return
@@ -147,9 +138,4 @@ class Benchmark(
     }
   }
 
-  companion object {
-    private val buildTools = File("${System.getenv("ANDROID_HOME")}/build-tools")
-    private val latestBuildTools = "$buildTools/${buildTools.list()!!.max()}"
-    private val aapt2 = "$latestBuildTools/aapt2"
-  }
 }

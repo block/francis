@@ -14,6 +14,9 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.file
 import com.squareup.francis.logging.log
+import com.squareup.francis.process.InputRedirectSpec
+import com.squareup.francis.process.OutputRedirectSpec
+import logcat.LogPriority
 import logcat.LogPriority.INFO
 import logcat.LogPriority.WARN
 import java.io.File
@@ -201,7 +204,9 @@ open class PerfettoCommand(
   runnerOpts: RunnerOptions,
   private val benchCommandFactory: (RunnerOptions) -> BenchCommand,
 ) : CliktCommand(name = "perfetto") {
-  override fun help(context: Context) = "Collect a raw Perfetto trace. Requires the instrumentation SDK."
+  override fun help(context: Context) = """
+    Collect a raw Perfetto trace. Tracing instrumentation requires the instrumentation SDK.
+  """.trimIndent()
 
   protected val baseOpts by runnerOpts.base
   protected val runnerOpts by runnerOpts
@@ -218,6 +223,87 @@ open class PerfettoCommand(
 
   override fun run() {
     baseOpts.setup()
+
+    if (runnerOpts.instrumentationApkOption == null) {
+      runManualPerfetto()
+    } else {
+      runInstrumentedPerfetto()
+    }
+  }
+
+  private fun runManualPerfetto() {
+    val appPackage = runnerOpts.appApkOption?.let { app ->
+      if (app.endsWith(".apk") || app.endsWith(".aab")) {
+        packageNameFromApk(app)
+      } else {
+        app
+      }
+    }
+
+    val configText = perfettoConfigFile?.readText()
+      ?: if (appPackage != null) PerfettoConfig.forPackage(appPackage) else PerfettoConfig.forAllApps()
+
+    val deviceConfigPath = "$DEVICE_FRANCIS_DIR/perfetto-config.txt"
+    val deviceTracePath = "/data/misc/perfetto-traces/francis-trace.perfetto-trace"
+    val outputDir = File(runnerOpts.hostOutputDir)
+    outputDir.mkdirs()
+    val hostTraceFile = File(outputDir, "trace.perfetto-trace")
+
+    // Push config to device
+    adb.shellRun("mkdir", "-p", DEVICE_FRANCIS_DIR) { logPriority = LogPriority.DEBUG }
+    val tempConfigFile = File.createTempFile("perfetto-config", ".txt")
+    try {
+      tempConfigFile.writeText(configText)
+      adb.cmdRun("push", tempConfigFile.absolutePath, deviceConfigPath) { logPriority = LogPriority.DEBUG }
+    } finally {
+      tempConfigFile.delete()
+    }
+
+    log(INFO) { "Starting Perfetto trace..." }
+    if (appPackage != null) {
+      log { "Tracing app: $appPackage" }
+    } else {
+      log { "Tracing all apps (no --app specified)" }
+    }
+    log(INFO) { "Press Ctrl+C to stop tracing." }
+
+    // Run perfetto with -t for PTY (so Ctrl+C sends SIGINT to stop tracing).
+    // We use `cat config | perfetto` instead of `perfetto < config` because SELinux
+    // blocks the perfetto domain from reading shell_data_file labeled files directly.
+    // With cat, the shell process reads the file and pipes it to perfetto.
+    val perfettoProc = adb.cmdStart(
+      "shell", "-t",
+      "cat $deviceConfigPath | perfetto --txt -c - -o $deviceTracePath"
+    ) {
+      stdinRedirect = InputRedirectSpec.INHERIT
+      stdoutRedirect = OutputRedirectSpec.INHERIT
+      stderrRedirect = OutputRedirectSpec.INHERIT
+      logPriority = INFO
+    }
+
+    Runtime.getRuntime().addShutdownHook(Thread {
+      if (perfettoProc.isAlive) {
+        perfettoProc.destroy()
+      }
+    })
+
+    perfettoProc.waitFor()
+
+    // Clean up config file
+    adb.shellRun("rm", "-f", deviceConfigPath) { logPriority = LogPriority.DEBUG }
+
+    log { "Pulling trace from device..." }
+    adb.cmdRun("pull", deviceTracePath, hostTraceFile.absolutePath) { logPriority = INFO }
+    adb.shellRun("rm", "-f", deviceTracePath) { logPriority = LogPriority.DEBUG }
+
+    log { "Trace saved to: ${hostTraceFile.absolutePath}" }
+
+    if (view) {
+      openTrace(hostTraceFile)
+    }
+  }
+
+  private fun runInstrumentedPerfetto() {
     val configPath = perfettoConfigFile?.absolutePath
     val optsWithProfiler = object : RunnerValues by runnerOpts {
       override val profiler: String = "perfetto"

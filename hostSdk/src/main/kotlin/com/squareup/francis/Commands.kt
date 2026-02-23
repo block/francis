@@ -205,7 +205,7 @@ open class PerfettoCommand(
   private val benchCommandFactory: (RunnerOptions) -> BenchCommand,
 ) : CliktCommand(name = "perfetto") {
   override fun help(context: Context) = """
-    Collect a raw Perfetto trace. Tracing instrumentation requires the instrumentation SDK.
+    Collect a Perfetto trace. Tracing an instrumentation symbol requires the instrumentation SDK.
   """.trimIndent()
 
   protected val baseOpts by runnerOpts.base
@@ -341,7 +341,9 @@ open class SimpleperfCommand(
   runnerOpts: RunnerOptions,
   private val benchCommandFactory: (RunnerOptions) -> BenchCommand,
 ) : CliktCommand(name = "simpleperf") {
-  override fun help(context: Context) = "Run a benchmark with simpleperf profiling. Requires the instrumentation SDK."
+  override fun help(context: Context) = """
+    Collect a simpleperf trace. Tracing an instrumentation symbol requires the instrumentation SDK.
+  """.trimIndent()
 
   protected val baseOpts by runnerOpts.base
   protected val runnerOpts by runnerOpts
@@ -358,6 +360,87 @@ open class SimpleperfCommand(
 
   override fun run() {
     baseOpts.setup()
+
+    if (runnerOpts.instrumentationApkOption == null) {
+      runManualSimpleperf()
+    } else {
+      runInstrumentedSimpleperf()
+    }
+  }
+
+  private fun runManualSimpleperf() {
+    val appPackage = runnerOpts.appApkOption?.let { app ->
+      if (app.endsWith(".apk") || app.endsWith(".aab")) {
+        packageNameFromApk(app)
+      } else {
+        app
+      }
+    }
+
+    val deviceTracePath = "$DEVICE_FRANCIS_DIR/perf.data"
+    val outputDir = File(runnerOpts.hostOutputDir)
+    outputDir.mkdirs()
+    val hostTraceFile = File(outputDir, "perf.simpleperf.data")
+
+    adb.shellRun("mkdir", "-p", DEVICE_FRANCIS_DIR) { logPriority = LogPriority.DEBUG }
+
+    // Check if cpu-cycles event is supported, else use cpu-clock (same as instrumented path)
+    val simpleperfList = adb.shellStdout("simpleperf", "list", "hw") { logPriority = LogPriority.DEBUG }
+    val supportsCpuCycles = simpleperfList.lines().any { it.trim() == "cpu-cycles" }
+    val eventArgs = if (supportsCpuCycles) "" else "-e cpu-clock"
+
+    // Build call graph args (same as instrumented path)
+    val callGraphArgs = if (callGraph != "none") "--call-graph $callGraph" else ""
+
+    // Build app targeting args
+    val appArgs = appPackage?.let { "--app $it" } ?: "-a"  // -a for system-wide
+
+    // Build the full command (matching instrumented path structure)
+    val simpleperfCmd = listOf(
+      "simpleperf", "record",
+      callGraphArgs,
+      eventArgs,
+      appArgs,
+      "-o", deviceTracePath
+    ).filter { it.isNotBlank() }.joinToString(" ")
+
+    log { "Starting simpleperf profiling..." }
+    if (appPackage != null) {
+      log { "Profiling app: $appPackage" }
+    } else {
+      log { "Profiling system-wide (no --app specified)" }
+    }
+    log { "Press Ctrl+C to stop profiling." }
+
+    // Run simpleperf with PTY for Ctrl+C signal handling
+    val simpleperfProc = adb.cmdStart("shell", "-t", simpleperfCmd) {
+      stdinRedirect = InputRedirectSpec.INHERIT
+      stdoutRedirect = OutputRedirectSpec.INHERIT
+      stderrRedirect = OutputRedirectSpec.INHERIT
+      logPriority = INFO
+    }
+
+    Runtime.getRuntime().addShutdownHook(Thread {
+      if (simpleperfProc.isAlive) {
+        simpleperfProc.destroy()
+      }
+    })
+
+    simpleperfProc.waitFor()
+
+    log { "Pulling profile from device..." }
+    adb.cmdRun("pull", deviceTracePath, hostTraceFile.absolutePath) { logPriority = INFO }
+    adb.shellRun("rm", "-f", deviceTracePath) { logPriority = LogPriority.DEBUG }
+
+    log { "Profile saved to: ${hostTraceFile.absolutePath}" }
+
+    if (view) {
+      log { "Opening profile in Firefox Profiler: ${hostTraceFile.absolutePath}" }
+      ViewCommand.openTraceInFirefoxProfiler(hostTraceFile)
+    }
+  }
+
+  private fun runInstrumentedSimpleperf() {
     val callGraphValue = callGraph.takeIf { it != "none" }
     val optsWithProfiler = object : RunnerValues by runnerOpts {
       override val profiler: String = "simpleperf"

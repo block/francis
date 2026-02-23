@@ -46,11 +46,11 @@ open class BenchCommand(
   override fun help(context: Context) = "Run a benchmark"
 
   protected val baseOpts by runnerOpts.base
-  protected val runnerOpts by runnerOpts
+  protected val runnerVals: RunnerValues by runnerOpts
 
   override fun run() {
     baseOpts.setup()
-    runBenchmark(baseOpts, runnerOpts)
+    runBenchmark(baseOpts, runnerVals)
   }
 
   open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {
@@ -63,13 +63,13 @@ private class ResolveCommand(
   runnerOpts: RunnerOptions,
 ) : CliktCommand(name = "resolve") {
   val baseOpts by runnerOpts.base
-  val runnerOpts by runnerOpts
+  val runnerVals: RunnerValues by runnerOpts
 
   override fun run() {
     baseOpts.setup()
     // Force resolution of lazy properties (populates resolution cache)
-    runnerOpts.appApk
-    runnerOpts.instrumentationApk
+    runnerVals.appApk
+    runnerVals.instrumentationApk
   }
 }
 
@@ -203,14 +203,13 @@ open class CompareCommand : CliktCommand(name = "compare") {
 
 open class PerfettoCommand(
   runnerOpts: RunnerOptions,
-  private val benchCommandFactory: (RunnerOptions) -> BenchCommand,
 ) : CliktCommand(name = "perfetto") {
   override fun help(context: Context) = """
     Collect a Perfetto trace. Tracing an instrumentation symbol requires the instrumentation SDK.
   """.trimIndent()
 
   protected val baseOpts by runnerOpts.base
-  protected val runnerOpts by runnerOpts
+  protected val runnerVals: RunnerValues by runnerOpts
 
   private val perfettoConfigFile by option(
     "--perfetto-config",
@@ -225,7 +224,7 @@ open class PerfettoCommand(
   override fun run() {
     baseOpts.setup()
 
-    if (runnerOpts.instrumentationApkOption == null) {
+    if (runnerVals.instrumentationApkOrNull == null) {
       runManualPerfetto()
     } else {
       runInstrumentedPerfetto()
@@ -233,7 +232,7 @@ open class PerfettoCommand(
   }
 
   private fun runManualPerfetto() {
-    val appPackage = runnerOpts.appApkOption?.let { app ->
+    val appPackage = runnerVals.appApkOrNull?.let { app ->
       if (app.endsWith(".apk") || app.endsWith(".aab")) {
         packageNameFromApk(app)
       } else {
@@ -246,7 +245,7 @@ open class PerfettoCommand(
 
     val deviceConfigPath = "${FrancisConstants.DEVICE_FRANCIS_DIR}/perfetto-config.txt"
     val deviceTracePath = "/data/misc/perfetto-traces/francis-trace.perfetto-trace"
-    val outputDir = File(runnerOpts.hostOutputDir)
+    val outputDir = File(runnerVals.hostOutputDir)
     outputDir.mkdirs()
     val hostTraceFile = File(outputDir, "trace.perfetto-trace")
 
@@ -296,11 +295,11 @@ open class PerfettoCommand(
 
   private fun runInstrumentedPerfetto() {
     val configPath = perfettoConfigFile?.absolutePath
-    val optsWithProfiler = object : RunnerValues by runnerOpts {
+    val optsWithProfiler = object : RunnerValues by runnerVals {
       override val profiler: String = "perfetto"
       override val perfettoConfigPath: String? = configPath
-      override val iterations: Int? = runnerOpts.iterations ?: 1
-      override val delegate: RunnerValues get() = runnerOpts
+      override val iterations: Int? = runnerVals.iterations ?: 1
+      override val delegate: RunnerValues get() = runnerVals
     }
     runBenchmark(baseOpts, optsWithProfiler)
 
@@ -324,20 +323,19 @@ open class PerfettoCommand(
   }
 
   open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {
-    benchCommandFactory(runnerOpts).runBenchmark(baseVals, runnerVals)
+    Benchmark(baseVals, runnerVals).run()
   }
 }
 
 open class SimpleperfCommand(
   runnerOpts: RunnerOptions,
-  private val benchCommandFactory: (RunnerOptions) -> BenchCommand,
 ) : CliktCommand(name = "simpleperf") {
   override fun help(context: Context) = """
     Collect a simpleperf trace. Tracing an instrumentation symbol requires the instrumentation SDK.
   """.trimIndent()
 
   protected val baseOpts by runnerOpts.base
-  protected val runnerOpts by runnerOpts
+  protected val runnerVals: RunnerValues by runnerOpts
 
   private val callGraph by option(
     "--call-graph",
@@ -352,7 +350,7 @@ open class SimpleperfCommand(
   override fun run() {
     baseOpts.setup()
 
-    if (runnerOpts.instrumentationApkOption == null) {
+    if (runnerVals.instrumentationApkOrNull == null) {
       runManualSimpleperf()
     } else {
       runInstrumentedSimpleperf()
@@ -360,7 +358,7 @@ open class SimpleperfCommand(
   }
 
   private fun runManualSimpleperf() {
-    val appPackage = runnerOpts.appApkOption?.let { app ->
+    val appPackage = runnerVals.appApkOrNull?.let { app ->
       if (app.endsWith(".apk") || app.endsWith(".aab")) {
         packageNameFromApk(app)
       } else {
@@ -369,7 +367,7 @@ open class SimpleperfCommand(
     }
 
     val deviceTracePath = "${FrancisConstants.DEVICE_FRANCIS_DIR}/perf.data"
-    val outputDir = File(runnerOpts.hostOutputDir)
+    val outputDir = File(runnerVals.hostOutputDir)
     outputDir.mkdirs()
     val hostTraceFile = File(outputDir, "perf.simpleperf.data")
 
@@ -421,11 +419,11 @@ open class SimpleperfCommand(
 
   private fun runInstrumentedSimpleperf() {
     val callGraphValue = callGraph.takeIf { it != "none" }
-    val optsWithProfiler = object : RunnerValues by runnerOpts {
+    val optsWithProfiler = object : RunnerValues by runnerVals {
       override val profiler: String = "simpleperf"
       override val simpleperfCallGraph: String? = callGraphValue
-      override val iterations: Int? = runnerOpts.iterations ?: 1
-      override val delegate: RunnerValues get() = runnerOpts
+      override val iterations: Int? = runnerVals.iterations ?: 1
+      override val delegate: RunnerValues get() = runnerVals
     }
     runBenchmark(baseOpts, optsWithProfiler)
 
@@ -445,7 +443,7 @@ open class SimpleperfCommand(
   }
 
   open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {
-    benchCommandFactory(runnerOpts).runBenchmark(baseVals, runnerVals)
+    Benchmark(baseVals, runnerVals).run()
   }
 }
 
@@ -455,9 +453,7 @@ open class SimpleperfCommand(
  *   The factory receives BaseConfig which includes francisRunDir and hostOutputDir.
  * @param benchCommandFactory Factory to create BenchCommand instances. Override to customize
  *   benchmark behavior (e.g., disable thermals before running).
- * @param simplePerfCommandFactory Factory to create SimpleperfCommand instances. Override to
- *   customize simpleperf behavior (e.g., disable SELinux during profiling). The factory receives
- *   RunnerOptions; use benchCommandFactory from the enclosing scope if needed.
+ * @param simplePerfCommandFactory Factory to create SimpleperfCommand instances.
  * @param compareCommandFactory Factory to create CompareCommand instances.
  * @param perfettoCommandFactory Factory to create PerfettoCommand instances.
  * @param viewCommandFactory Factory to create ViewCommand instances.
@@ -468,9 +464,9 @@ fun runFrancis(
   help: String = "Francis - Android benchmark runner.",
   runnerOptionsFactory: (BaseConfig) -> RunnerOptions = { config -> RunnerOptions(config = config) },
   benchCommandFactory: (RunnerOptions) -> BenchCommand = { opts -> BenchCommand(opts) },
-  simplePerfCommandFactory: (RunnerOptions) -> SimpleperfCommand = { opts -> SimpleperfCommand(opts, benchCommandFactory) },
+  simplePerfCommandFactory: (RunnerOptions) -> SimpleperfCommand = { opts -> SimpleperfCommand(opts) },
   compareCommandFactory: () -> CompareCommand = { CompareCommand() },
-  perfettoCommandFactory: (RunnerOptions) -> PerfettoCommand = { opts -> PerfettoCommand(opts, benchCommandFactory) },
+  perfettoCommandFactory: (RunnerOptions) -> PerfettoCommand = { opts -> PerfettoCommand(opts) },
   viewCommandFactory: (BaseOptions) -> ViewCommand = { opts -> ViewCommand(opts) },
 ) = pithyMain(rawArgs) {
   val baseConfig = BaseConfig()

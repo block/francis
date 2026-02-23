@@ -36,7 +36,7 @@ open class RunnerOptions(
   override val base: BaseOptions = BaseOptions(config),
 ): OptionGroup(), RunnerValues {
   override val hostOutputDir: String get() = config.hostOutputDir
-  private val appApkOption by option("-A", "--app", help = "Path to the APK to instrument, or package name if not ending in .apk/.aab.")
+  protected val appApkOption by option("-A", "--app", help = "Path to the APK to instrument, or package name if not ending in .apk/.aab.")
   override val appApkOrNull: String? by lazy {
     val app = appApkOption ?: return@lazy null
     if (app.endsWith(".apk") || app.endsWith(".aab")) {
@@ -48,7 +48,7 @@ open class RunnerOptions(
     }
   }
 
-  private val instrumentationApkOption by option("-I", "--inst", "--instrumentation", help = "Path to the APK to use as instrumentation, or package name if not ending in .apk/.aab.")
+  protected val instrumentationApkOption by option("-I", "--inst", "--instrumentation", help = "Path to the APK to use as instrumentation, or package name if not ending in .apk/.aab.")
   override val instrumentationApkOrNull: String? by lazy {
     val instrumentation = instrumentationApkOption ?: return@lazy null
     if (instrumentation.endsWith(".apk") || instrumentation.endsWith(".aab")) {
@@ -60,7 +60,7 @@ open class RunnerOptions(
     }
   }
 
-  private val testSymbolOption by option("-s", "--symbol", help = "Instrumentation class/method to run (e.g., com.example.MyTest or com.example.MyTest#testMethod).")
+  protected val testSymbolOption by option("-s", "--symbol", help = "Instrumentation class/method to run (e.g., com.example.MyTest or com.example.MyTest#testMethod).")
   override val testSymbolOrNull: String? by lazy { testSymbolOption }
 
   private val runnerClassOption by option("--runner-class", help = "Fully qualified name of the test runner class.")
@@ -96,7 +96,7 @@ open class RunnerOptions(
     }
   }
 
-  private val iterationsOption by option("--iterations", "-n", help = "Number of iterations to run for each benchmark. Requires the instrumentation SDK.")
+  protected val iterationsOption by option("--iterations", "-n", help = "Number of iterations to run for each benchmark. Requires the instrumentation SDK.")
     .int()
   override val iterations: Int? by lazy { iterationsOption }
 

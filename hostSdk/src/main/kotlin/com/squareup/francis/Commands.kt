@@ -22,6 +22,14 @@ import logcat.LogPriority.INFO
 import logcat.LogPriority.WARN
 import java.io.File
 
+/** Function type for executing a benchmark. Override to customize benchmark execution behavior. */
+typealias BenchmarkRunner = (BaseValues, RunnerValues) -> Unit
+
+/** Default benchmark runner that directly executes [Benchmark]. */
+val DefaultBenchmarkRunner: BenchmarkRunner = { baseVals, runnerVals ->
+  Benchmark(baseVals, runnerVals).run()
+}
+
 class FrancisEntrypoint(
   name: String,
   private val helpText: String = "Francis - Android benchmark runner.",
@@ -42,6 +50,7 @@ class FrancisEntrypoint(
 
 open class BenchCommand(
   runnerOpts: RunnerOptions,
+  private val benchmarkRunner: BenchmarkRunner = DefaultBenchmarkRunner,
 ) : CliktCommand(name = "bench") {
   override fun help(context: Context) = "Run a benchmark"
 
@@ -54,7 +63,7 @@ open class BenchCommand(
   }
 
   open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {
-    Benchmark(baseVals, runnerVals).run()
+    benchmarkRunner(baseVals, runnerVals)
   }
 }
 
@@ -76,7 +85,7 @@ private class ResolveCommand(
 class AbCommand(
   private val baseConfig: BaseConfig,
   private val runnerOptsFactory: (BaseConfig) -> RunnerOptions,
-  private val benchCommandFactory: (RunnerOptions) -> BenchCommand = { opts -> BenchCommand(opts) },
+  private val benchmarkRunner: BenchmarkRunner = DefaultBenchmarkRunner,
   private val rawArgs: List<String> = emptyList(),
   runnerOpts: RunnerOptions = runnerOptsFactory(baseConfig),
   private val entrypointName: String = "francis",
@@ -124,11 +133,11 @@ class AbCommand(
 
     // Run both benchmarks
     log { "Running baseline benchmark..." }
-    benchCommandFactory(baselineRunnerOpts).runBenchmark(baselineRunnerOpts.base, baselineRunnerOpts)
+    benchmarkRunner(baselineRunnerOpts.base, baselineRunnerOpts)
     log { "Baseline results: ${baselineRunnerOpts.hostOutputDir}" }
 
     log { "Running treatment benchmark..." }
-    benchCommandFactory(treatmentRunnerOpts).runBenchmark(treatmentRunnerOpts.base, treatmentRunnerOpts)
+    benchmarkRunner(treatmentRunnerOpts.base, treatmentRunnerOpts)
     log { "Treatment results: ${treatmentRunnerOpts.hostOutputDir}" }
 
     log { "A/B comparison complete." }
@@ -203,6 +212,7 @@ open class CompareCommand : CliktCommand(name = "compare") {
 
 open class PerfettoCommand(
   runnerOpts: RunnerOptions,
+  private val benchmarkRunner: BenchmarkRunner = DefaultBenchmarkRunner,
 ) : CliktCommand(name = "perfetto") {
   override fun help(context: Context) = """
     Collect a Perfetto trace. Tracing an instrumentation symbol requires the instrumentation SDK.
@@ -323,12 +333,13 @@ open class PerfettoCommand(
   }
 
   open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {
-    Benchmark(baseVals, runnerVals).run()
+    benchmarkRunner(baseVals, runnerVals)
   }
 }
 
 open class SimpleperfCommand(
   runnerOpts: RunnerOptions,
+  private val benchmarkRunner: BenchmarkRunner = DefaultBenchmarkRunner,
 ) : CliktCommand(name = "simpleperf") {
   override fun help(context: Context) = """
     Collect a simpleperf trace. Tracing an instrumentation symbol requires the instrumentation SDK.
@@ -443,7 +454,7 @@ open class SimpleperfCommand(
   }
 
   open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {
-    Benchmark(baseVals, runnerVals).run()
+    benchmarkRunner(baseVals, runnerVals)
   }
 }
 
@@ -451,8 +462,10 @@ open class SimpleperfCommand(
  * @param runnerOptionsFactory Factory to create fresh RunnerOptions instances.
  *   A factory is needed because AbCommand creates multiple instances with different parsed args.
  *   The factory receives BaseConfig which includes francisRunDir and hostOutputDir.
- * @param benchCommandFactory Factory to create BenchCommand instances. Override to customize
- *   benchmark behavior (e.g., disable thermals before running).
+ * @param runBenchmark Function to execute a benchmark. Override to customize benchmark execution
+ *   behavior (e.g., disable thermals before running). This is shared by all commands that run
+ *   benchmarks: bench, ab, perfetto, and simpleperf.
+ * @param benchCommandFactory Factory to create BenchCommand instances.
  * @param simplePerfCommandFactory Factory to create SimpleperfCommand instances.
  * @param compareCommandFactory Factory to create CompareCommand instances.
  * @param perfettoCommandFactory Factory to create PerfettoCommand instances.
@@ -463,10 +476,11 @@ fun runFrancis(
   name: String,
   help: String = "Francis - Android benchmark runner.",
   runnerOptionsFactory: (BaseConfig) -> RunnerOptions = { config -> RunnerOptions(config = config) },
-  benchCommandFactory: (RunnerOptions) -> BenchCommand = { opts -> BenchCommand(opts) },
-  simplePerfCommandFactory: (RunnerOptions) -> SimpleperfCommand = { opts -> SimpleperfCommand(opts) },
+  runBenchmark: BenchmarkRunner = DefaultBenchmarkRunner,
+  benchCommandFactory: (RunnerOptions, BenchmarkRunner) -> BenchCommand = { opts, runner -> BenchCommand(opts, runner) },
+  simplePerfCommandFactory: (RunnerOptions, BenchmarkRunner) -> SimpleperfCommand = { opts, runner -> SimpleperfCommand(opts, runner) },
   compareCommandFactory: () -> CompareCommand = { CompareCommand() },
-  perfettoCommandFactory: (RunnerOptions) -> PerfettoCommand = { opts -> PerfettoCommand(opts) },
+  perfettoCommandFactory: (RunnerOptions, BenchmarkRunner) -> PerfettoCommand = { opts, runner -> PerfettoCommand(opts, runner) },
   viewCommandFactory: (BaseOptions) -> ViewCommand = { opts -> ViewCommand(opts) },
 ) = pithyMain(rawArgs) {
   val baseConfig = BaseConfig()
@@ -485,11 +499,11 @@ fun runFrancis(
 
   val command = FrancisEntrypoint(name, help)
     .subcommands(
-      benchCommandFactory(runnerOptionsFactory(baseConfig)),
-      AbCommand(baseConfig, runnerOptionsFactory, benchCommandFactory, rawArgs.toList(), entrypointName = name),
+      benchCommandFactory(runnerOptionsFactory(baseConfig), runBenchmark),
+      AbCommand(baseConfig, runnerOptionsFactory, runBenchmark, rawArgs.toList(), entrypointName = name),
       compareCommandFactory(),
-      perfettoCommandFactory(runnerOptionsFactory(baseConfig)),
-      simplePerfCommandFactory(runnerOptionsFactory(baseConfig)),
+      perfettoCommandFactory(runnerOptionsFactory(baseConfig), runBenchmark),
+      simplePerfCommandFactory(runnerOptionsFactory(baseConfig), runBenchmark),
       viewCommandFactory(BaseOptions(baseConfig)),
     )
   try {

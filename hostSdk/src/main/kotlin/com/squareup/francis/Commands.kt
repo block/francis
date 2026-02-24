@@ -234,18 +234,31 @@ open class PerfettoCommand(
   override fun run() {
     baseOpts.setup()
 
-    if (shouldRunManualMode()) {
+    val traceFile = if (shouldRunManualMode()) {
       runManualPerfetto()
     } else {
       runInstrumentedPerfetto()
     }
+
+    if (traceFile != null) {
+      onTraceCollected(traceFile)
+      if (view) {
+        openTrace(traceFile)
+      }
+    } else {
+      log { "No .perfetto-trace files found in ${File(runnerVals.hostOutputDir).absolutePath}" }
+    }
+  }
+
+  protected open fun onTraceCollected(traceFile: File) {
+    // do nothing by default
   }
 
   protected open fun shouldRunManualMode(): Boolean {
-    return runnerVals.testSymbolOrNull != null
+    return runnerVals.testSymbolOrNull == null
   }
 
-  private fun runManualPerfetto() {
+  private fun runManualPerfetto(): File? {
     val appPackage = runnerVals.appApkOrNull?.let { app ->
       if (app.endsWith(".apk") || app.endsWith(".aab")) {
         packageNameFromApk(app)
@@ -307,12 +320,10 @@ open class PerfettoCommand(
 
     log { "Trace saved to: ${hostTraceFile.absolutePath}" }
 
-    if (view) {
-      openTrace(hostTraceFile)
-    }
+    return hostTraceFile
   }
 
-  private fun runInstrumentedPerfetto() {
+  private fun runInstrumentedPerfetto(): File? {
     val configPath = perfettoConfigFile?.absolutePath
     val optsWithProfiler = object : RunnerValues by runnerVals {
       override val profiler: String = "perfetto"
@@ -322,18 +333,13 @@ open class PerfettoCommand(
     }
     runBenchmark(baseOpts, optsWithProfiler)
 
-    if (view) {
-      val outputDir = File(optsWithProfiler.hostOutputDir)
-      val traceFile = outputDir.walkTopDown()
-        .filter { it.isFile && it.extension == "perfetto-trace" }
-        .sortedBy { it.name }
-        .firstOrNull()
-      if (traceFile != null) {
-        openTrace(traceFile)
-      } else {
-        log { "No .perfetto-trace files found in ${outputDir.absolutePath}" }
-      }
-    }
+    val outputDir = File(optsWithProfiler.hostOutputDir)
+    val traceFile = outputDir.walkTopDown()
+      .filter { it.isFile && it.extension == "perfetto-trace" }
+      .sortedBy { it.name }
+      .firstOrNull()
+
+    return traceFile
   }
 
   protected open fun openTrace(traceFile: File) {

@@ -234,11 +234,15 @@ open class PerfettoCommand(
   override fun run() {
     baseOpts.setup()
 
-    if (runnerVals.instrumentationApkOrNull == null) {
+    if (shouldRunManualMode()) {
       runManualPerfetto()
     } else {
       runInstrumentedPerfetto()
     }
+  }
+
+  protected open fun shouldRunManualMode(): Boolean {
+    return runnerVals.testSymbolOrNull != null
   }
 
   private fun runManualPerfetto() {
@@ -366,11 +370,15 @@ open class SimpleperfCommand(
   override fun run() {
     baseOpts.setup()
 
-    if (runnerVals.instrumentationApkOrNull == null) {
+    if (shouldRunManualMode()) {
       runManualSimpleperf()
     } else {
       runInstrumentedSimpleperf()
     }
+  }
+
+  protected open fun shouldRunManualMode(): Boolean {
+    return runnerVals.testSymbolOrNull != null
   }
 
   private fun runManualSimpleperf() {

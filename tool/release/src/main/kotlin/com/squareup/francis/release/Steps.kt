@@ -144,8 +144,6 @@ enum class Steps(val stepName: String) {
             println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/${ctx.releaseVersion}")
             println("  Homebrew:              https://github.com/block/homebrew-tap/blob/main/Formula/francis.rb")
             println()
-
-            ctx.finalizeRelease()
         }
     };
 

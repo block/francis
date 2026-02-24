@@ -64,6 +64,10 @@ class ReleaseCommand : CliktCommand(name = "release") {
 
         ctx = ReleaseContext(francisDir)
         step.execute()
+
+        if (step == Steps.entries.last()) {
+            ctx.finalizeRelease()
+        }
     }
 
     private fun findFrancisDir(): File {

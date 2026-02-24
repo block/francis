@@ -283,7 +283,12 @@ open class PerfettoCommand(
       "shell", "-t",
       "cat $deviceConfigPath | perfetto --txt -c - -o $deviceTracePath"
     ) {
+      // We need to inherit stdin in order for CTRL+C to be handled by the inner PTY.
       stdinRedirect = InputRedirectSpec.INHERIT
+      // We need to inherit stdout in order for `CTRL+C` to be echoed.
+      // Unfortunately that means that simpleperf logging won't be captured in
+      // our log file.
+      stdoutRedirect = OutputRedirectSpec.INHERIT
     }
 
     log(INFO) { "Press Ctrl+C to stop tracing." }
@@ -410,10 +415,15 @@ open class SimpleperfCommand(
 
     // Run simpleperf with PTY for Ctrl+C signal handling
     val simpleperfProc = adb.cmdStart("shell", "-t", simpleperfCmd) {
+      // We need to inherit stdin in order for CTRL+C to be handled by the inner PTY.
       stdinRedirect = InputRedirectSpec.INHERIT
+      // We need to inherit stdout in order for `CTRL+C` to be echoed.
+      // Unfortunately that means that simpleperf logging won't be captured in
+      // our log file.
+      stdoutRedirect = OutputRedirectSpec.INHERIT
     }
 
-    log(INFO) { "Press Ctrl+C to stop profiling." }
+    log(INFO) { "Press Ctrl+C to stop profiling (be patient - it will take half a minute or so after you press CTRL+C to flush the buffers)." }
     simpleperfProc.waitFor()
 
     log { "Pulling profile from device..." }

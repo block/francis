@@ -231,6 +231,11 @@ open class PerfettoCommand(
     help = "Open the trace in Perfetto UI after collection. If multiple iterations, opens the first trace."
   ).flag("--no-view", default = true)
 
+  private val outputFile by option(
+    "-o", "--output",
+    help = "Path to save the trace file. If not specified, trace is saved in the run directory."
+  ).file(canBeDir = false)
+
   override fun run() {
     baseOpts.setup()
 
@@ -241,9 +246,17 @@ open class PerfettoCommand(
     }
 
     if (traceFile != null) {
-      onTraceCollected(traceFile)
+      val finalTraceFile = if (outputFile != null) {
+        outputFile!!.parentFile?.mkdirs()
+        traceFile.copyTo(outputFile!!, overwrite = true)
+        log { "Trace saved to: ${outputFile!!.absolutePath}" }
+        outputFile!!
+      } else {
+        traceFile
+      }
+      onTraceCollected(finalTraceFile)
       if (view) {
-        openTrace(traceFile)
+        openTrace(finalTraceFile)
       }
     } else {
       log { "No .perfetto-trace files found in ${File(runnerVals.hostOutputDir).absolutePath}" }
@@ -373,13 +386,24 @@ open class SimpleperfCommand(
     help = "Open the profile in Firefox Profiler after collection. Converts to gecko format and opens the first trace."
   ).flag("--no-view", default = true)
 
+  private val outputFile by option(
+    "-o", "--output",
+    help = "Path to save the profile file. If not specified, profile is saved in the run directory."
+  ).file(canBeDir = false)
+
   override fun run() {
     baseOpts.setup()
 
-    if (shouldRunManualMode()) {
+    val profileFile = if (shouldRunManualMode()) {
       runManualSimpleperf()
     } else {
       runInstrumentedSimpleperf()
+    }
+
+    if (profileFile != null && outputFile != null) {
+      outputFile!!.parentFile?.mkdirs()
+      profileFile.copyTo(outputFile!!, overwrite = true)
+      log { "Profile saved to: ${outputFile!!.absolutePath}" }
     }
   }
 
@@ -387,7 +411,7 @@ open class SimpleperfCommand(
     return runnerVals.testSymbolOrNull != null
   }
 
-  private fun runManualSimpleperf() {
+  private fun runManualSimpleperf(): File {
     val appPackage = runnerVals.appApkOrNull?.let { app ->
       if (app.endsWith(".apk") || app.endsWith(".aab")) {
         packageNameFromApk(app)
@@ -450,9 +474,11 @@ open class SimpleperfCommand(
       log { "Opening profile in Firefox Profiler: ${hostTraceFile.absolutePath}" }
       ViewCommand.openTraceInFirefoxProfiler(hostTraceFile)
     }
+
+    return hostTraceFile
   }
 
-  private fun runInstrumentedSimpleperf() {
+  private fun runInstrumentedSimpleperf(): File? {
     val callGraphValue = callGraph.takeIf { it != "none" }
     val optsWithProfiler = object : RunnerValues by runnerVals {
       override val profiler: String = "simpleperf"
@@ -462,12 +488,13 @@ open class SimpleperfCommand(
     }
     runBenchmark(baseOpts, optsWithProfiler)
 
+    val outputDir = File(optsWithProfiler.hostOutputDir)
+    val simpleperfFile = outputDir.walkTopDown()
+      .filter { it.isFile && it.name.endsWith(".simpleperf.data") }
+      .sortedBy { it.name }
+      .firstOrNull()
+
     if (view) {
-      val outputDir = File(optsWithProfiler.hostOutputDir)
-      val simpleperfFile = outputDir.walkTopDown()
-        .filter { it.isFile && it.name.endsWith(".simpleperf.data") }
-        .sortedBy { it.name }
-        .firstOrNull()
       if (simpleperfFile != null) {
         log { "Opening profile in Firefox Profiler: ${simpleperfFile.absolutePath}" }
         ViewCommand.openTraceInFirefoxProfiler(simpleperfFile)
@@ -475,6 +502,8 @@ open class SimpleperfCommand(
         log { "No .simpleperf.data files found in ${outputDir.absolutePath}" }
       }
     }
+
+    return simpleperfFile
   }
 
   open fun runBenchmark(baseVals: BaseValues, runnerVals: RunnerValues) {

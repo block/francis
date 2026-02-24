@@ -6,6 +6,22 @@ import kotlin.system.exitProcess
 enum class Steps(val stepName: String) {
     PROMPT("prompt") {
         override fun run() {
+            if (ctx.activeDir.exists()) {
+                error("""
+                    |A release is already in progress (releases/active exists).
+                    |
+                    |To continue the existing release, run:
+                    |  scripts/release.sh --run-all
+                    |
+                    |To abandon and start fresh, run:
+                    |  rm -r releases/active
+                    |
+                    |You may also need to clean up git artifacts (if they were created):
+                    |  git checkout main && git branch -D ${ctx.releaseBranch} && git push origin --delete ${ctx.releaseBranch}
+                    |  git tag -d ${ctx.releaseTag} && git push origin --delete ${ctx.releaseTag}
+                """.trimMargin())
+            }
+
             println()
             println("═══════════════════════════════════════════════════════════════")
             println("                    Francis Release Process                     ")

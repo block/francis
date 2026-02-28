@@ -98,9 +98,6 @@ class TeeProcess(
     // important that this property is lazy)
     // TODO: arguably we should have a separate thread waiting for the process to exit (the current
     //   implementation won't show the process exiting if exitCode is never called)
-    while (!delegate.waitFor(10, TimeUnit.SECONDS)) {
-      log(WARN) { "(${delegate.pid()}) still waiting for process to exit..." }
-    }
     val code = delegate.exitValue()
     log(DEBUG) { "(${delegate.pid()}) process exited, waiting for pumps..." }
     awaitPumps()

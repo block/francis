@@ -81,11 +81,11 @@ class Benchmark(
       "$instrumentationPackage/${runnerVals.runnerClass}"
     )
 
-    // Show logcat for the instrumentation process (UiDevice:d is absurdly verbose, so we silence
+    // Show logcat for the instrumentation process (UiDevice is absurdly verbose, so we silence
     // that)
     val packageLogcatHelper = PackageLogcatHelper.create(
       instrumentationPackage,
-      filterSpecs = listOf("UiDevice:i", "*:v"),
+      filterSpecs = listOf("UiDevice:e", "*:v"),
     )
 
     val instrumentProc = adb.shellStart(*cmdArgs) {

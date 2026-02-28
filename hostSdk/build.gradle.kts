@@ -46,6 +46,7 @@ sourceSets {
 
 dependencies {
     api(project(":shared"))
+    api(project(":script"))
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.clikt)
     implementation(libs.datumbox)

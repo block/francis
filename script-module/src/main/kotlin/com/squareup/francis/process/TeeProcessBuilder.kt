@@ -121,8 +121,6 @@ class TeeProcess(
         throw FailedExecException(
           exitCode,
           command,
-          if (stdoutPipe != null) stdoutReader.readText() else null,
-          if (stderrPipe != null) stderrReader.readText() else null,
         )
       }
     }

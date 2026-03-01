@@ -170,6 +170,28 @@ class TeeProcessBuilderTest {
     assertThat(baos.toString()).isEqualTo("error\n")
   }
 
+  @Test
+  fun checkExitCode_doesNotConsumePipedStreamsOnFailure() {
+    val process = TeeProcessBuilder("sh", "-c", "echo out; echo err >&2; exit 12")
+      .apply {
+        stdoutRedirect = OutputRedirectSpec.PIPE
+        stderrRedirect = OutputRedirectSpec.PIPE
+      }
+      .start()
+
+    val exception = try {
+      process.checkExitCode()
+      throw AssertionError("Expected FailedExecException")
+    } catch (e: FailedExecException) {
+      e
+    }
+
+    assertThat(exception.exitCode).isEqualTo(12)
+    assertThat(exception.commandLine).containsExactly("sh", "-c", "echo out; echo err >&2; exit 12").inOrder()
+    assertThat(process.stdoutReader.readText()).isEqualTo("out\n")
+    assertThat(process.stderrReader.readText()).isEqualTo("err\n")
+  }
+
   // --- stdin NULL ---
 
   @Test

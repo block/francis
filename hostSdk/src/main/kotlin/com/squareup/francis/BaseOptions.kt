@@ -7,8 +7,12 @@ import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.switch
 import com.github.ajalt.clikt.parameters.types.enum
+import com.squareup.francis.logging.logFile
 import com.squareup.francis.logging.setupLogging
+import com.squareup.francis.logging.stdErr
+import com.squareup.francis.logging.timeFormatter
 import logcat.LogPriority
+import java.time.LocalDateTime
 
 
 interface BaseValues {
@@ -39,10 +43,11 @@ class BaseConfig(
    * change between requests).
    */
   val resolutionCache: MutableMap<String, String> = mutableMapOf(),
+  val rawArgs: List<String> = emptyList(),
 ) {
   val hostOutputDir: String get() = if (outputSubdir.isEmpty()) francisRunDir else "$francisRunDir/$outputSubdir"
 
-  fun withOutputSubdir(subdir: String) = BaseConfig(francisRunDir, subdir, resolutionCache)
+  fun withOutputSubdir(subdir: String) = BaseConfig(francisRunDir, subdir, resolutionCache, rawArgs)
 }
 
 class BaseOptions(val config: BaseConfig = BaseConfig()) : OptionGroup(), BaseValues {
@@ -70,6 +75,14 @@ class BaseOptions(val config: BaseConfig = BaseConfig()) : OptionGroup(), BaseVa
   override val devMode by option("--dev", help = "Enable dev mode").flag()
 
   fun setup() {
+    val isFirstSetup = logFile == null
     setupLogging(verbosity, "${config.francisRunDir}/francis.log")
+    if (isFirstSetup) {
+      val timestamp = LocalDateTime.now().format(timeFormatter)
+      stdErr.println("Execution started at [$timestamp]", logFileOnly = true)
+      if (config.rawArgs.isNotEmpty()) {
+        stdErr.println("raw-args: ${config.rawArgs.joinToString(" ")}", logFileOnly = true)
+      }
+    }
   }
 }

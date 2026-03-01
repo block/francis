@@ -536,7 +536,7 @@ fun runFrancis(
   perfettoCommandFactory: (RunnerOptions, BenchmarkRunner) -> PerfettoCommand = { opts, runner -> PerfettoCommand(opts, runner) },
   viewCommandFactory: (BaseOptions) -> ViewCommand = { opts -> ViewCommand(opts) },
 ) = pithyMain(rawArgs) {
-  val baseConfig = BaseConfig()
+  val baseConfig = BaseConfig(rawArgs = rawArgs.toList())
 
   val abIdx = rawArgs.indexOf("ab")
   val abArgs = if (abIdx >= 0) {

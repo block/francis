@@ -2,7 +2,6 @@ package com.squareup.francis
 
 import com.squareup.francis.logging.log
 import com.squareup.francis.logging.logFile
-import com.squareup.francis.logging.setRawArgs
 import com.squareup.francis.logging.stdErr
 import logcat.LogPriority.ERROR
 import logcat.LogcatLogger
@@ -28,7 +27,6 @@ val releaseDir: String by lazy {
 }
 
 fun pithyMain(rawArgs: Array<String>, block: () -> Unit) {
-  setRawArgs(rawArgs)
   val exitCode = try {
     block()
     0

@@ -26,6 +26,15 @@ class TeeProcessBuilderTest {
     assertThat(exitCode).isEqualTo(0)
   }
 
+  @Test
+  fun exitCode_waitsForRunningProcess() {
+    val process = TeeProcessBuilder("sh", "-c", "sleep 0.1")
+      .apply { stdoutRedirect = OutputRedirectSpec.DISCARD }
+      .start()
+
+    assertThat(process.exitCode).isEqualTo(0)
+  }
+
   // --- stdout PIPE ---
 
   @Test

@@ -98,7 +98,7 @@ class TeeProcess(
     // important that this property is lazy)
     // TODO: arguably we should have a separate thread waiting for the process to exit (the current
     //   implementation won't show the process exiting if exitCode is never called)
-    val code = delegate.exitValue()
+    val code = delegate.waitFor()
     log(DEBUG) { "(${delegate.pid()}) process exited, waiting for pumps..." }
     awaitPumps()
     logPriority?.let { log(it) { "(${delegate.pid()}) exited with code $code" } }

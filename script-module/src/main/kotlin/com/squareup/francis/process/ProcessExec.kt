@@ -5,24 +5,27 @@ import com.squareup.francis.logging.log
 import com.squareup.francis.logging.logFormatted
 import com.squareup.francis.logging.prefix
 import com.squareup.francis.logging.timeFormatter
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.OutputStream
+import java.nio.charset.Charset
 import java.time.LocalDateTime
 
 class LineBufferedLogOutputStream(
-  val formatter: ProcessOutputFormatter
+  val formatter: ProcessOutputFormatter,
+  private val charset: Charset = Charsets.UTF_8,
 ) : OutputStream(), PidAware {
   override fun setPid(pid: Long) {
     formatter.initialize(pid)
   }
-  private val lineBuffer = StringBuilder()
+  private val lineBuffer = ByteArrayOutputStream()
 
   override fun write(b: Int) {
-    val c = b.toChar()
-    if (c == '\n') {
+    val value = b and 0xFF
+    if (value == '\n'.code) {
       flushLine()
     } else {
-      lineBuffer.append(c)
+      lineBuffer.write(value)
     }
   }
 
@@ -33,13 +36,14 @@ class LineBufferedLogOutputStream(
   }
 
   private fun flushLine() {
-    logFormatted(formatter.logLevel, formatter = formatter) { lineBuffer.toString() }
-    lineBuffer.clear()
+    val line = lineBuffer.toByteArray().toString(charset)
+    logFormatted(formatter.logLevel, formatter = formatter) { line }
+    lineBuffer.reset()
   }
 
   override fun close() {
-    if (lineBuffer.isNotEmpty()) {
-      lineBuffer.append("⏎")
+    if (lineBuffer.size() > 0) {
+      lineBuffer.write("⏎".toByteArray(charset))
       flushLine()
     }
   }

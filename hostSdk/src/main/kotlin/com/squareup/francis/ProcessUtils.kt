@@ -3,7 +3,6 @@ package com.squareup.francis
 import com.squareup.francis.process.FailedExecException
 import com.squareup.francis.process.OutputRedirectSpec
 import com.squareup.francis.process.SubProc
-import com.squareup.francis.process.subproc
 import com.squareup.francis.process.TeeProcess
 import com.squareup.francis.process.TeeProcessBuilder
 import com.squareup.francis.process.shellEscape

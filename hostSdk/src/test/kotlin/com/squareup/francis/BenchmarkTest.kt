@@ -2,7 +2,6 @@ package com.squareup.francis
 
 import com.google.common.truth.Truth.assertThat
 import logcat.LogPriority
-import com.squareup.francis.process.subproc
 
 import org.junit.BeforeClass
 import org.junit.ClassRule

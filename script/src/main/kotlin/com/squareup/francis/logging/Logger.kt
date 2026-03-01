@@ -14,8 +14,6 @@ val LogPriority.prefix: String
   get() = name.first().toString()
 
 val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
-val realStdErr: PrintStream = System.err
-val realStdOut: PrintStream = System.out
 
 private var minLogPriority: LogPriority = LogPriority.INFO
 private var rawArgs: Array<String>? = null
@@ -36,11 +34,11 @@ val stdOut: LogStream by lazy {
   } else {
     { message -> message }
   }
-  LogStream(realStdOut, formatter)
+  LogStream(System.out, formatter)
 }
 
 val stdErr: LogStream by lazy {
-  LogStream(realStdErr) { message ->
+  LogStream(System.err) { message ->
     val timestamp = LocalDateTime.now().format(timeFormatter)
     "[$timestamp stderr] $message"
   }
@@ -144,9 +142,9 @@ fun logFormatted(
   stdErr.println(message(), formatter = formatter, logFileOnly = logFileOnly)
 }
 
-const val DEFAULT_TAG = "francis"
+const val DEFAULT_TAG = "com.squareup.francis.script"
 
-inline fun log(
+fun log(
   priority: LogPriority = LogPriority.DEBUG,
   message: () -> String
 ) = logcatImpl(tag = DEFAULT_TAG, priority = priority, message = message)

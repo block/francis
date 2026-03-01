@@ -5,7 +5,6 @@ import com.squareup.francis.process.OutputTarget
 import com.squareup.francis.process.loggedStdoutRedirectSpec
 import com.squareup.francis.process.loggedStderrRedirectSpec
 import com.squareup.francis.process.OutputRedirectSpec
-import com.squareup.francis.process.subproc
 import java.io.File
 
 

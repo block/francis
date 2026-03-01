@@ -11,7 +11,6 @@ import com.github.ajalt.clikt.parameters.types.int
 import com.squareup.francis.logging.log
 import com.squareup.francis.process.OutputRedirectSpec
 import com.squareup.francis.process.OutputTarget
-import com.squareup.francis.process.subproc
 import com.sun.net.httpserver.HttpServer
 import logcat.LogPriority.ERROR
 import java.io.File

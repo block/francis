@@ -68,8 +68,6 @@ private val loggingProcessTemplate = TeeProcessBuilder(emptyList()).apply {
   logPriority = LogPriority.INFO
 }
 
-val subproc = SubProc()
-
 class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) {
 
   fun start(

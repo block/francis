@@ -1,6 +1,7 @@
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinJvm
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -13,6 +14,14 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)
+}
+
+java {
+    // Pin compilation to Java 17 so building this module from newer projects/JDKs does not
+    // accidentally use newer Java APIs. The artifact remains compatible with Java 17+ runtimes.
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
 }
 
 val francisVersion = project.findProperty("francis.version") as String

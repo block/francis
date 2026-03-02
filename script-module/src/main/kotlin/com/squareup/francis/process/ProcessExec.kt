@@ -104,7 +104,7 @@ class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) 
   ): String {
     return start(*command, commandRepr = commandRepr) {
       configure()
-      stdoutRedirect += OutputRedirectSpec.PIPE
+      stdoutRedirect += OutputRedirectSpec.CAPTURE
     }.stdoutText(chomp, allowedExitCodes)
   }
 }

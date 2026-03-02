@@ -53,7 +53,7 @@ class PackageLogcatHelper private constructor(
   private fun awaitInstrumentationPid(): Long {
     log(VERBOSE) { "Starting logcat watcher for AndroidJUnitRunner" }
     val watcher = adb.cmdStart("logcat", "-T", "1", "-s", "AndroidJUnitRunner:*") {
-      stdoutRedirect = OutputRedirectSpec.PIPE
+      stdoutRedirect = OutputRedirectSpec.CAPTURE
       stderrRedirect = OutputRedirectSpec.DISCARD
     }
 

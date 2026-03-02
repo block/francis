@@ -60,7 +60,7 @@ class Adb(
   ): String {
     return shellStart(*args, forceRoot = forceRoot, evalArgs = evalArgs) {
       configure()
-      stdoutRedirect += OutputRedirectSpec.PIPE
+      stdoutRedirect += OutputRedirectSpec.CAPTURE
     }.stdoutText(chomp, allowedExitCodes)
   }
 
@@ -88,7 +88,7 @@ class Adb(
   ): String {
     return cmdStart(*args) {
       configure()
-      stdoutRedirect += OutputRedirectSpec.PIPE
+      stdoutRedirect += OutputRedirectSpec.CAPTURE
     }.stdoutText(chomp, allowedExitCodes)
   }
 
@@ -126,8 +126,8 @@ private fun detectSerial(subproc: SubProc): String {
   if (serialFromEnv != null) return serialFromEnv
 
   val proc = subproc.start("adb", "get-serialno") {
-    stdoutRedirect += OutputRedirectSpec.PIPE
-    stderrRedirect += OutputRedirectSpec.PIPE
+    stdoutRedirect += OutputRedirectSpec.CAPTURE
+    stderrRedirect += OutputRedirectSpec.CAPTURE
   }
 
   val exitCode = proc.waitFor()

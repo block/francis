@@ -36,7 +36,7 @@ The long-term goal is Android-compatible logging behavior, but Android compatibi
 - pass `allowedExitCodes = null` to allow any exit code
 - otherwise non-allowed exits throw `FailedExecException`
 
-`FailedExecException` includes the command line and exit code so callers can fail loudly and deterministically.
+`FailedExecException` includes the command line, exit code, and captured stdout/stderr (when configured) so callers can fail loudly and deterministically.
 
 ## Quickstart
 

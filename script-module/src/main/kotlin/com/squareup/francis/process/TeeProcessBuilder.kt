@@ -6,6 +6,7 @@ import logcat.LogPriority.DEBUG
 import logcat.LogPriority.WARN
 import java.io.BufferedReader
 import java.io.BufferedWriter
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -21,7 +22,7 @@ private val teePumpExecutor = Executors.newCachedThreadPool { r ->
 }
 
 sealed class OutputTarget {
-  object Pipe : OutputTarget()
+  object Capture : OutputTarget()
   object Inherit : OutputTarget()
   data class ToFile(val file: File, val append: Boolean = false) : OutputTarget()
   data class ToStream(val stream: OutputStream, val autoClose: Boolean = true) : OutputTarget()
@@ -36,7 +37,7 @@ data class OutputRedirectSpec(val targets: List<OutputTarget>) {
     val merged = targets.toMutableList()
     for (target in other.targets) {
       val isDuplicate = when (target) {
-        is OutputTarget.Pipe -> merged.any { it is OutputTarget.Pipe }
+        is OutputTarget.Capture -> merged.any { it is OutputTarget.Capture }
         is OutputTarget.Inherit -> merged.any { it is OutputTarget.Inherit }
         else -> false
       }
@@ -47,7 +48,7 @@ data class OutputRedirectSpec(val targets: List<OutputTarget>) {
 
   companion object {
     val DISCARD = OutputRedirectSpec(emptyList())
-    val PIPE = OutputRedirectSpec(listOf(OutputTarget.Pipe))
+    val CAPTURE = OutputRedirectSpec(listOf(OutputTarget.Capture))
     val INHERIT = OutputRedirectSpec(listOf(OutputTarget.Inherit))
   }
 }
@@ -73,6 +74,8 @@ data class InputRedirectSpec(
 
 class TeeProcess(
   private val delegate: Process,
+  private val stdoutCapture: BlockingCapturedOutput?,
+  private val stderrCapture: BlockingCapturedOutput?,
   private val stdoutPipe: InputStream?,
   private val stderrPipe: InputStream?,
   private val stdinWrapper: OutputStream?,
@@ -121,6 +124,8 @@ class TeeProcess(
         throw FailedExecException(
           exitCode,
           command,
+          stdoutCapture,
+          stderrCapture,
         )
       }
     }
@@ -155,8 +160,8 @@ class TeeProcess(
 
 class TeeProcessBuilder(command: List<String>) {
   private val pb = ProcessBuilder(command)
-  var stdoutRedirect: OutputRedirectSpec = OutputRedirectSpec.PIPE
-  var stderrRedirect: OutputRedirectSpec = OutputRedirectSpec.PIPE
+  var stdoutRedirect: OutputRedirectSpec = OutputRedirectSpec.CAPTURE
+  var stderrRedirect: OutputRedirectSpec = OutputRedirectSpec.CAPTURE
   var stdinRedirect: InputRedirectSpec = InputRedirectSpec.NULL
 
   var command: List<String>
@@ -237,6 +242,8 @@ class TeeProcessBuilder(command: List<String>) {
 
     return TeeProcess(
       process,
+      stdoutPipe,
+      stderrPipe,
       stdoutPipe?.toBlockingInputStream(),
       stderrPipe?.toBlockingInputStream(),
       stdinWrapper,
@@ -250,8 +257,8 @@ class TeeProcessBuilder(command: List<String>) {
     chomp: Boolean = true,
     allowedExitCodes: List<Int>? = listOf(0)
   ): String {
-    stdoutRedirect += OutputRedirectSpec.PIPE
-    stderrRedirect += OutputRedirectSpec.PIPE
+    stdoutRedirect += OutputRedirectSpec.CAPTURE
+    stderrRedirect += OutputRedirectSpec.CAPTURE
     val proc = start()
     return proc.stdoutText(chomp, allowedExitCodes)
   }
@@ -342,7 +349,7 @@ class TeeProcessBuilder(command: List<String>) {
     spec: OutputRedirectSpec,
     pumpFutures: MutableList<CompletableFuture<Void>>,
     streamType: String
-  ): StreamingByteBuffer? {
+  ): BlockingCapturedOutput? {
     val targets = spec.targets
     
     // No pumping needed for these cases (handled by ProcessBuilder directly)
@@ -358,12 +365,12 @@ class TeeProcessBuilder(command: List<String>) {
     // Build list of output streams to tee to
     val outputStreams = mutableListOf<OutputStream>()
     val streamsToClose = mutableListOf<OutputStream>()
-    var buffer: StreamingByteBuffer? = null
+    var buffer: BlockingCapturedOutput? = null
 
     for (target in targets) {
       when (target) {
-        is OutputTarget.Pipe -> {
-          buffer = StreamingByteBuffer()
+        is OutputTarget.Capture -> {
+          buffer = BlockingCapturedOutput()
           outputStreams += buffer
           streamsToClose += buffer
         }
@@ -491,37 +498,35 @@ class TeeProcessBuilder(command: List<String>) {
   }
 }
 
-// Similar to Okio's Buffer - if we took a dep on okio we could just use that
-class StreamingByteBuffer : OutputStream() {
+class BlockingCapturedOutput : OutputStream() {
   private val lock = Object()
-  private var buf = ByteArray(8192)
-  private var writePos = 0
+  private val buffer = ByteArrayOutputStream()
   private var closed = false
 
   override fun write(b: ByteArray, off: Int, len: Int) = synchronized(lock) {
-    ensureCapacity(writePos + len)
-    System.arraycopy(b, off, buf, writePos, len)
-    writePos += len
+    buffer.write(b, off, len)
     lock.notifyAll()
   }
 
   override fun write(b: Int) = write(byteArrayOf(b.toByte()), 0, 1)
 
-  private fun ensureCapacity(needed: Int) {
-    if (needed > buf.size) buf = buf.copyOf(maxOf(buf.size * 2, needed))
-  }
-
   override fun close() = synchronized(lock) { closed = true; lock.notifyAll() }
+
+  fun awaitClosedOutputCopy(): ProcessOutputCopy = synchronized(lock) {
+    while (!closed) lock.wait()
+    ProcessOutputCopy(buffer.toByteArray())
+  }
 
   fun toBlockingInputStream(): InputStream = object : InputStream() {
     private var readPos = 0
     @Volatile private var readerClosed = false
 
     override fun read(b: ByteArray, off: Int, len: Int): Int = synchronized(lock) {
-      while (!readerClosed && readPos >= writePos && !closed) lock.wait()
-      if (readerClosed || readPos >= writePos) return -1
-      val n = minOf(len, writePos - readPos)
-      System.arraycopy(buf, readPos, b, off, n)
+      while (!readerClosed && readPos >= buffer.size() && !closed) lock.wait()
+      val snapshot = buffer.toByteArray()
+      if (readerClosed || readPos >= snapshot.size) return -1
+      val n = minOf(len, snapshot.size - readPos)
+      System.arraycopy(snapshot, readPos, b, off, n)
       readPos += n
       n
     }

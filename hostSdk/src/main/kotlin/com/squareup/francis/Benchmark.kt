@@ -88,8 +88,8 @@ class Benchmark(
     )
 
     val instrumentProc = adb.shellStart(*cmdArgs) {
-      stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.Pipe)) + loggedStdoutRedirectSpec(LogPriority.INFO)
-      stderrRedirect = OutputRedirectSpec(listOf(OutputTarget.Pipe)) + loggedStderrRedirectSpec(LogPriority.INFO)
+      stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.Capture)) + loggedStdoutRedirectSpec(LogPriority.INFO)
+      stderrRedirect = OutputRedirectSpec(listOf(OutputTarget.Capture)) + loggedStderrRedirectSpec(LogPriority.INFO)
     }
 
     val exitCode: Int

@@ -24,14 +24,7 @@ interface BaseValues {
  * Runtime configuration that's not specified via CLI args.
  */
 class BaseConfig(
-  val francisRunDir: String = run {
-    val runsDir = java.io.File(Xdg.francisData, "runs")
-    runsDir.mkdirs()
-    val nextNum = (runsDir.list()?.mapNotNull { it.toIntOrNull() }?.maxOrNull() ?: -1) + 1
-    val runDir = java.io.File(runsDir, "%06d".format(nextNum))
-    runDir.mkdirs()
-    runDir.absolutePath
-  },
+  val francisRunDir: String = nextFrancisRunDir().absolutePath,
   /**
    * Subdirectory within francisRunDir for output files. Empty string means output directly to
    * francisRunDir. Used by A/B comparisons to separate baseline and treatment outputs.

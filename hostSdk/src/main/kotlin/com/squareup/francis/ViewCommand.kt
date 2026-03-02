@@ -198,7 +198,7 @@ class ViewCommand(
     }
 
     private fun deduplicateBinaryCache(binaryCacheDir: File) {
-      val globalCache = File(Xdg.francisCache, "symbols")
+      val globalCache = File(FrancisXdg.francisCache, "symbols")
       globalCache.mkdirs()
 
       var deduped = 0

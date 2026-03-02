@@ -1,9 +1,9 @@
 package com.squareup.francis
 
-import com.squareup.francis.process.OutputRedirectSpec
-import com.squareup.francis.process.OutputTarget
-import com.squareup.francis.process.TeeProcess
-import com.squareup.francis.logging.log
+import com.squareup.francis.script.process.OutputRedirectSpec
+import com.squareup.francis.script.process.OutputTarget
+import com.squareup.francis.script.process.TeeProcess
+import com.squareup.francis.script.logging.log
 import logcat.LogPriority.VERBOSE
 import java.io.Closeable
 import java.util.concurrent.CompletableFuture

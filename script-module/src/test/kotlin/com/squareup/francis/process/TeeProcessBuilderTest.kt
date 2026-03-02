@@ -1,4 +1,4 @@
-package com.squareup.francis.process
+package com.squareup.francis.script.process
 
 import com.google.common.truth.Truth.assertThat
 import org.junit.ClassRule

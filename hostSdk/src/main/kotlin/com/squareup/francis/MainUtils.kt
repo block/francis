@@ -1,8 +1,8 @@
 package com.squareup.francis
 
-import com.squareup.francis.logging.log
-import com.squareup.francis.logging.logFile
-import com.squareup.francis.logging.stdErr
+import com.squareup.francis.script.logging.log
+import com.squareup.francis.script.logging.logFile
+import com.squareup.francis.script.logging.stdErr
 import logcat.LogPriority.ERROR
 import logcat.LogcatLogger
 import java.io.File

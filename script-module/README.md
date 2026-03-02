@@ -7,7 +7,7 @@ JVM CLI app. In the future, script-module may be separated into another repo.
 
 ## Core API
 
-The main entry point is `SubProc` from `com.squareup.francis.process`.
+The main entry point is `SubProc` from `com.squareup.francis.script.process`.
 
 Callers should create one or more shared instances and reuse them:
 
@@ -17,7 +17,7 @@ val subproc = SubProc(...)
 
 ## Logging Model
 
-Logging is provided by `com.squareup.francis.logging` and built on top of [logcat](https://github.com/square/logcat).
+Logging is provided by `com.squareup.francis.script.logging` and built on top of [logcat](https://github.com/square/logcat).
 
 `setupLogging(minPriority, logPath)` establishes two behaviors:
 
@@ -41,7 +41,7 @@ The long-term goal is Android-compatible logging behavior, but Android compatibi
 ## Quickstart
 
 ```kotlin
-import com.squareup.francis.process.SubProc
+import com.squareup.francis.script.process.SubProc
 
 val subproc = SubProc()
 

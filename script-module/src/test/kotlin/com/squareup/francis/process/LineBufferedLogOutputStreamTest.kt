@@ -1,8 +1,8 @@
-package com.squareup.francis.process
+package com.squareup.francis.script.process
 
 import com.google.common.truth.Truth.assertThat
-import com.squareup.francis.logging.logFile
-import com.squareup.francis.logging.setupLogging
+import com.squareup.francis.script.logging.logFile
+import com.squareup.francis.script.logging.setupLogging
 import logcat.LogPriority.DEBUG
 import org.junit.Before
 import org.junit.BeforeClass

@@ -1,10 +1,10 @@
 package com.squareup.francis
 
 import logcat.LogPriority
-import com.squareup.francis.process.OutputTarget
-import com.squareup.francis.process.loggedStdoutRedirectSpec
-import com.squareup.francis.process.loggedStderrRedirectSpec
-import com.squareup.francis.process.OutputRedirectSpec
+import com.squareup.francis.script.process.OutputTarget
+import com.squareup.francis.script.process.loggedStdoutRedirectSpec
+import com.squareup.francis.script.process.loggedStderrRedirectSpec
+import com.squareup.francis.script.process.OutputRedirectSpec
 import java.io.File
 
 

@@ -13,10 +13,10 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.file
-import com.squareup.francis.logging.log
-import com.squareup.francis.process.InputRedirectSpec
-import com.squareup.francis.process.OutputRedirectSpec
-import com.squareup.francis.process.shellEscape
+import com.squareup.francis.script.logging.log
+import com.squareup.francis.script.process.InputRedirectSpec
+import com.squareup.francis.script.process.OutputRedirectSpec
+import com.squareup.francis.script.process.shellEscape
 import logcat.LogPriority
 import logcat.LogPriority.INFO
 import logcat.LogPriority.WARN

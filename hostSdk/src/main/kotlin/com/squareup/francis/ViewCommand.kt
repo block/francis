@@ -8,9 +8,9 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
-import com.squareup.francis.logging.log
-import com.squareup.francis.process.OutputRedirectSpec
-import com.squareup.francis.process.OutputTarget
+import com.squareup.francis.script.logging.log
+import com.squareup.francis.script.process.OutputRedirectSpec
+import com.squareup.francis.script.process.OutputTarget
 import com.sun.net.httpserver.HttpServer
 import logcat.LogPriority.ERROR
 import java.io.File

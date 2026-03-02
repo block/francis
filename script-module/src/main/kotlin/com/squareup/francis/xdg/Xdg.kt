@@ -1,4 +1,4 @@
-package com.squareup.francis.xdg
+package com.squareup.francis.script.xdg
 
 import java.io.File
 

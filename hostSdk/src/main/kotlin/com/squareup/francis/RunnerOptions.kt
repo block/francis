@@ -6,7 +6,7 @@ import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.nullableFlag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
-import com.squareup.francis.logging.log
+import com.squareup.francis.script.logging.log
 
 interface RunnerValues {
   val base: BaseValues

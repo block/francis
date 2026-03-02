@@ -7,10 +7,10 @@ import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.switch
 import com.github.ajalt.clikt.parameters.types.enum
-import com.squareup.francis.logging.logFile
-import com.squareup.francis.logging.setupLogging
-import com.squareup.francis.logging.stdErr
-import com.squareup.francis.logging.timeFormatter
+import com.squareup.francis.script.logging.logFile
+import com.squareup.francis.script.logging.setupLogging
+import com.squareup.francis.script.logging.stdErr
+import com.squareup.francis.script.logging.timeFormatter
 import logcat.LogPriority
 import java.time.LocalDateTime
 

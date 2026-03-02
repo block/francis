@@ -1,7 +1,7 @@
 package com.squareup.francis
 
-import com.squareup.francis.logging.nextAppRunDir
-import com.squareup.francis.xdg.Xdg
+import com.squareup.francis.script.logging.nextAppRunDir
+import com.squareup.francis.script.xdg.Xdg
 import java.io.File
 
 object FrancisXdg {

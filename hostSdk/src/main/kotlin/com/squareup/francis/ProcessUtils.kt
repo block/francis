@@ -1,11 +1,11 @@
 package com.squareup.francis
 
-import com.squareup.francis.process.FailedExecException
-import com.squareup.francis.process.OutputRedirectSpec
-import com.squareup.francis.process.SubProc
-import com.squareup.francis.process.TeeProcess
-import com.squareup.francis.process.TeeProcessBuilder
-import com.squareup.francis.process.shellEscape
+import com.squareup.francis.script.process.FailedExecException
+import com.squareup.francis.script.process.OutputRedirectSpec
+import com.squareup.francis.script.process.SubProc
+import com.squareup.francis.script.process.TeeProcess
+import com.squareup.francis.script.process.TeeProcessBuilder
+import com.squareup.francis.script.process.shellEscape
 import logcat.LogPriority
 import java.io.File
 

@@ -1,4 +1,4 @@
-package com.squareup.francis.logging
+package com.squareup.francis.script.logging
 
 import logcat.LogPriority
 import logcat.LogcatLogger

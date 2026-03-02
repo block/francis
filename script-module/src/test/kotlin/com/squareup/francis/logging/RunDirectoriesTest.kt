@@ -1,4 +1,4 @@
-package com.squareup.francis.logging
+package com.squareup.francis.script.logging
 
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule

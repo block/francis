@@ -1,6 +1,6 @@
-package com.squareup.francis.logging
+package com.squareup.francis.script.logging
 
-import com.squareup.francis.xdg.Xdg
+import com.squareup.francis.script.xdg.Xdg
 import java.io.File
 
 fun nextNumberedRunDir(runsDir: File): File {

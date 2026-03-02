@@ -1,6 +1,6 @@
-package com.squareup.francis.process
+package com.squareup.francis.script.process
 
-import com.squareup.francis.logging.log
+import com.squareup.francis.script.logging.log
 import logcat.LogPriority
 import logcat.LogPriority.DEBUG
 import logcat.LogPriority.WARN

@@ -1,4 +1,4 @@
-package com.squareup.francis.process
+package com.squareup.francis.script.process
 
 import java.io.ByteArrayInputStream
 import java.io.InputStream

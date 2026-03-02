@@ -1,5 +1,6 @@
 package com.squareup.francis
 
+import com.squareup.francis.process.FailedExecException
 import com.squareup.francis.process.OutputRedirectSpec
 import com.squareup.francis.process.SubProc
 import com.squareup.francis.process.TeeProcess
@@ -125,16 +126,14 @@ private fun detectSerial(subproc: SubProc): String {
   val serialFromEnv = System.getenv("ANDROID_SERIAL")
   if (serialFromEnv != null) return serialFromEnv
 
-  val proc = subproc.start("adb", "get-serialno") {
-    stdoutRedirect += OutputRedirectSpec.CAPTURE
-    stderrRedirect += OutputRedirectSpec.CAPTURE
+  return try {
+    subproc.stdout("adb", "get-serialno")
+  } catch (e: FailedExecException) {
+    val stderr = e.stderrText
+    if (stderr != null) {
+      throw PithyException(e.exitCode, stderr)
+    } else {
+      throw e
+    }
   }
-
-  val exitCode = proc.waitFor()
-  val stdout = proc.stdoutReader.readText().removeSuffix("\n")
-  if (exitCode == 0) return stdout
-
-  val stderr = proc.stderrReader.readText().trim()
-  val output = if (stderr.isNotEmpty()) stderr else stdout.trim()
-  throw PithyException(exitCode, output.ifEmpty { "(exit code $exitCode) adb get-serialno" })
 }

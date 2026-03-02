@@ -67,8 +67,8 @@ class ProcessOutputFormatter(
 
 private val loggingProcessTemplate = TeeProcessBuilder(emptyList()).apply {
   stdinRedirect = InputRedirectSpec.NULL
-  stdoutRedirect = loggedStdoutRedirectSpec()
-  stderrRedirect = loggedStderrRedirectSpec()
+  stdoutRedirect = OutputRedirectSpec.CAPTURE + loggedStdoutRedirectSpec()
+  stderrRedirect = OutputRedirectSpec.CAPTURE + loggedStderrRedirectSpec()
   logPriority = LogPriority.INFO
 }
 

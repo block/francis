@@ -62,21 +62,50 @@ When you need lower-level control, use `TeeProcessBuilder`.
 
 You can configure:
 
-- input source (`PIPE`, `NULL`, `INHERIT`, file, stream)
-- output targets (pipe, file, stream)
+- input source (`Pipe`, `Null`, `Inherit`, file, stream)
+- output targets (`Capture`, `Inherit`, file, stream)
 - working directory and environment
 - command display text via `commandRepr`
 - environment overlays
 
-### INHERIT Constraints
+### ProcessBuilder Pipe vs TeeProcessBuilder Capture
 
-`INHERIT` cannot be combined with tee targets for the same stream.
+In Java `ProcessBuilder`, `Redirect.PIPE` is the `Pipe` mode used for process streams.
+
+In `TeeProcessBuilder`, the equivalent for `stdout` / `stderr` is `OutputTarget.Capture`, not `Pipe`.
+
+- `ProcessBuilder.redirectOutput(Redirect.PIPE)` -> `TeeProcessBuilder.stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.Capture))`
+- `ProcessBuilder.redirectError(Redirect.PIPE)` -> `TeeProcessBuilder.stderrRedirect = OutputRedirectSpec(listOf(OutputTarget.Capture))`
+- `ProcessBuilder.redirectInput(Redirect.PIPE)` -> `TeeProcessBuilder.stdinRedirect = InputRedirectSpec.PIPE`
+
+`Pipe` still exists in `TeeProcessBuilder`, but only for **stdin** input via `InputRedirectSpec.PIPE`. For process output, use `Capture`.
+
+The naming is intentional because semantics differ:
+
+- `ProcessBuilder` `Pipe` means "leave this stream as a raw pipe endpoint" and the caller is responsible for draining it.
+- `TeeProcessBuilder` `Capture` means "actively drain output and store a copy in memory" so output can be read later, read multiple times, and included in fail-fast exceptions.
+- `Capture` can be combined with other output targets (for example file/stream teeing), while plain `Pipe` does not express that higher-level tee behavior.
+
+```kotlin
+val builder = TeeProcessBuilder("cat").apply {
+  stdinRedirect = InputRedirectSpec.PIPE
+  stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.Capture))
+}
+
+val proc = builder.start()
+proc.stdinWriter.use { it.write("hello\n") }
+val output = proc.stdoutText()
+```
+
+### Inherit Constraints
+
+`Inherit` cannot be combined with tee targets for the same stream.
 
 Examples of invalid combinations:
 
-- `stdout = INHERIT + ToFile(...)`
-- `stderr = INHERIT + Pipe`
-- `stdin = INHERIT` with tee outputs
+- `stdout = Inherit + ToFile(...)`
+- `stderr = Inherit + Pipe`
+- `stdin = Inherit` with tee outputs
 
 These combinations throw `IllegalArgumentException` during process startup.
 

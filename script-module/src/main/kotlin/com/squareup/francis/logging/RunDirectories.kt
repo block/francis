@@ -11,4 +11,4 @@ fun nextNumberedRunDir(runsDir: File): File {
   return runDir
 }
 
-fun nextAppRunDir(appName: String): File = nextNumberedRunDir(File(Xdg.dataHome, "$appName/runs"))
+fun nextAppRunDir(appName: String): File = nextNumberedRunDir(File(Xdg.stateHome, "$appName/runs"))

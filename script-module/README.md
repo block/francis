@@ -114,6 +114,15 @@ These combinations throw `IllegalArgumentException` during process startup.
 - runtime target: Java 17+
 - module bytecode target: JVM 17
 
+## XDG Paths
+
+`com.squareup.francis.script.xdg.Xdg` exposes XDG base directory helpers for CLIs:
+
+- `Xdg.dataHome`
+- `Xdg.configHome`
+- `Xdg.cacheHome`
+- `Xdg.stateHome`
+
 ## Tests
 
 Run:

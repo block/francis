@@ -18,4 +18,7 @@ object Xdg {
 
   val cacheHome: File
     get() = File(System.getenv("XDG_CACHE_HOME")?.takeIf { it.isNotEmpty() } ?: "$home/.cache")
+
+  val stateHome: File
+    get() = File(System.getenv("XDG_STATE_HOME")?.takeIf { it.isNotEmpty() } ?: "$home/.local/state")
 }

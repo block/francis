@@ -88,7 +88,7 @@ class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) 
   fun run(
     vararg command: String,
     commandRepr: String? = null,
-    allowedExitCodes: List<Int> = listOf(0),
+    allowedExitCodes: List<Int>? = listOf(0),
     configure: TeeProcessBuilder.() -> Unit = {}
   ) {
     start(*command, commandRepr = commandRepr, configure = configure)
@@ -99,7 +99,7 @@ class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) 
     vararg command: String,
     commandRepr: String? = null,
     chomp: Boolean = true,
-    allowedExitCodes: List<Int> = listOf(0),
+    allowedExitCodes: List<Int>? = listOf(0),
     configure: TeeProcessBuilder.() -> Unit = {}
   ): String {
     return start(*command, commandRepr = commandRepr) {

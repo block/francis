@@ -52,6 +52,11 @@ subproc.run("git", "status")
 val branch = subproc.stdout("git", "branch", "--show-current")
 println("branch=$branch")
 
+// Capture both stdout and stderr.
+val result = subproc.outputs("sh", "-c", "echo out; echo err >&2")
+println("stdout=${result.stdout}")
+println("stderr=${result.stderr}")
+
 // Accept non-zero codes explicitly.
 subproc.run("grep", "needle", "file.txt", allowedExitCodes = listOf(0, 1))
 ```

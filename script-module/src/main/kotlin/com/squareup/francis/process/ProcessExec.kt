@@ -72,6 +72,12 @@ private val loggingProcessTemplate = TeeProcessBuilder(emptyList()).apply {
   logPriority = LogPriority.INFO
 }
 
+data class ExecResult(
+  val exitCode: Int,
+  val stdout: String,
+  val stderr: String,
+)
+
 class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) {
 
   fun start(
@@ -106,6 +112,29 @@ class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) 
       configure()
       stdoutRedirect += OutputRedirectSpec.CAPTURE
     }.stdoutText(chomp, allowedExitCodes)
+  }
+
+  fun outputs(
+    vararg command: String,
+    commandRepr: String? = null,
+    chomp: Boolean = false,
+    allowedExitCodes: List<Int>? = listOf(0),
+    configure: TeeProcessBuilder.() -> Unit = {}
+  ): ExecResult {
+    val process = start(*command, commandRepr = commandRepr) {
+      configure()
+      stdoutRedirect += OutputRedirectSpec.CAPTURE
+      stderrRedirect += OutputRedirectSpec.CAPTURE
+    }
+    val exitCode = process.checkExitCode(allowedExitCodes)
+    val stdoutText = process.stdoutReader.use { it.readText() }
+    val stderrText = process.stderrReader.use { it.readText() }
+
+    return ExecResult(
+      exitCode = exitCode,
+      stdout = if (chomp) stdoutText.removeSuffix("\n") else stdoutText,
+      stderr = if (chomp) stderrText.removeSuffix("\n") else stderrText,
+    )
   }
 }
 

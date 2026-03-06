@@ -53,7 +53,8 @@ The script will:
    - Commits and pushes to main
 
 7. **Update Homebrew formula**
-   - Triggers `update-francis.yaml` workflow in `block/homebrew-tap`
+   - Triggers `bump-formula.yaml` workflow in `block/homebrew-tap`
+   - Sends: `repo=block/francis`, `formula=francis`, `tag=vX.Y.Z`, and the release `artifact_url`
    - Waits for the workflow to complete
 
 ## Resuming Failed Releases
@@ -99,7 +100,7 @@ Francis uses semantic versioning (MAJOR.MINOR.PATCH):
 
 Each release produces:
 
-1. **GitHub Release** (`https://github.com/squareup/francis/releases/tag/vX.Y.Z`)
+1. **GitHub Release** (`https://github.com/block/francis/releases/tag/vX.Y.Z`)
    - `francis-release.tar.gz` - Complete release bundle with:
      - JAR files (francis.jar, francis-demo.jar, francis-host-sdk.jar)
      - Demo APKs
@@ -130,7 +131,7 @@ GitHub Actions may be delayed. Wait a few minutes and the script will find it.
 
 ### Release workflow fails
 
-Check the workflow logs: `gh run view --repo squareup/francis`
+Check the workflow logs: `gh run view --repo block/francis`
 
 Common issues:
 - Maven Central credentials not configured (repository secrets)
@@ -142,5 +143,9 @@ Check the workflow manually: `https://github.com/block/homebrew-tap/actions`
 
 You can manually trigger it:
 ```bash
-gh workflow run update-francis.yaml --repo block/homebrew-tap --field tag=vX.Y.Z
+gh workflow run bump-formula.yaml --repo block/homebrew-tap \
+  --field repo=block/francis \
+  --field formula=francis \
+  --field tag=vX.Y.Z \
+  --field artifact_url=https://github.com/block/francis/releases/download/vX.Y.Z/francis-release.tar.gz
 ```

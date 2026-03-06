@@ -124,14 +124,18 @@ enum class Steps(val stepName: String) {
 
     TRIGGER_FORMULA_BUMP("trigger-formula-bump") {
         override fun run() {
+            val releaseArtifactUrl = "https://github.com/block/francis/releases/download/${ctx.releaseTag}/francis-release.tar.gz"
             println("Triggering Homebrew tap update for ${ctx.releaseTag}...")
             check(ctx.runCommand(listOf(
-                "gh", "workflow", "run", "update-francis.yaml",
+                "gh", "workflow", "run", "bump-formula.yaml",
                 "--repo", "block/homebrew-tap",
-                "--field", "tag=${ctx.releaseTag}"
+                "--field", "repo=block/francis",
+                "--field", "formula=francis",
+                "--field", "tag=${ctx.releaseTag}",
+                "--field", "artifact_url=$releaseArtifactUrl"
             )))
 
-            waitForWorkflowInRepo("update-francis.yaml", "block/homebrew-tap", timeoutMinutes = 10)
+            waitForWorkflowInRepo("bump-formula.yaml", "block/homebrew-tap", timeoutMinutes = 10)
 
             println()
             println("═══════════════════════════════════════════════════════════════")
@@ -263,5 +267,4 @@ private fun waitForWorkflowInRepo(workflow: String, repo: String, timeoutMinutes
         error("Workflow '$workflow' in '$repo' failed!")
     }
 }
-
 

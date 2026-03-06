@@ -92,5 +92,24 @@ This allows Francis to hook into [measureRepeated](https://developer.android.com
 - change iteration count
 - surround the measureBlock parameter with code to start/stop perfetto/simpleperf in order to capture traces
 
+3. Optionally use `@Disable` (from the instrumentation SDK) instead of `@Ignore`:
+
+```kotlin
+import com.squareup.francis.Disable
+
+@Disable("TRACKER-123")
+@Test
+fun expensiveBenchmark() {
+  // ...
+}
+```
+
+`@Disable` skips the test by default, but Francis automatically sets `francis.overrideDisable`
+from `--symbol`. This way you disable a test in CI, but still run it manually with Francis.
+
+If `@Disable` is on a class, target that class (`com.example.BenchmarkClass`) to override it.
+If `@Disable` is on a method, target that method
+(`com.example.BenchmarkClass#expensiveBenchmark`) to override it.
+
 ## Development
 You can use `scripts/francis` to build and run francis during development. If you don't have a specific app/instrumentation that you want to test it with, you can use `scripts/francis-demo` - it's the same as `scripts/francis` but it includes predefined app/instrumentation apks.

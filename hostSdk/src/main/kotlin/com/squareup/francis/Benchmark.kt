@@ -7,7 +7,8 @@ import com.squareup.francis.script.process.loggedStderrRedirectSpec
 import com.squareup.francis.script.process.OutputRedirectSpec
 import java.io.File
 
-
+// This lets instrumentation-side @Disable checks know what target Francis explicitly requested.
+private const val OVERRIDE_DISABLE_ARG = "francis.overrideDisable"
 class Benchmark(
   val baseVals: BaseValues,
   val runnerVals: RunnerValues,
@@ -46,6 +47,8 @@ class Benchmark(
   val instrumentationArgsList: List<String> by lazy {
     val instrumentationArgs: Map<String, String?> = runnerVals.instrumentationArgs + mapOf(
       "class" to runnerVals.testSymbol,
+      // Auto-wire override from --symbol so users don't need to pass this manually.
+      OVERRIDE_DISABLE_ARG to runnerVals.testSymbol,
       "additionalTestOutputDir" to deviceOutputDir,
       "simpleperfOutputDir" to simpleperfOutputDir,
       "simpleperfCallGraph" to runnerVals.simpleperfCallGraph,

@@ -14,9 +14,12 @@ import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.benchmark.traceprocessor.TraceProcessor
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assume.assumeTrue
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
+
+private const val OVERRIDE_DISABLE_ARG = "francis.overrideDisable"
 
 @OptIn(ExperimentalMetricApi::class)
 private class NoOpMetric : TraceMetric() {
@@ -32,7 +35,13 @@ class FrancisBenchmarkRule : TestRule {
 
     override fun apply(base: Statement, description: Description): Statement {
         testDescription = description
-        return macrobenchmarkRule.apply(base, description)
+        val wrapped = macrobenchmarkRule.apply(base, description)
+        return object : Statement() {
+            override fun evaluate() {
+                description.requireEnabled()
+                wrapped.evaluate()
+            }
+        }
     }
 
     private val testName: String
@@ -165,3 +174,45 @@ class FrancisBenchmarkRule : TestRule {
         }
     }
 }
+
+private fun Description.requireEnabled() {
+    val methodDisable = getAnnotation(Disable::class.java)
+    val classDisable = testClass?.getAnnotation(Disable::class.java)
+    // Method-level @Disable is more specific and wins when both are present.
+    val (disable, expectedTarget) = when {
+        methodDisable != null -> methodDisable to methodDisableOverrideTarget()
+        classDisable != null -> classDisable to classDisableOverrideTarget()
+        else -> return
+    }
+
+    val actualOverride = InstrumentationRegistry.getArguments().getString(OVERRIDE_DISABLE_ARG)
+    val reasonSuffix = disable.value.takeIf(String::isNotBlank)?.let { " ($it)" } ?: ""
+
+    assumeTrue(
+        "$this is disabled$reasonSuffix. To run it, set instrumentation arg " +
+            "$OVERRIDE_DISABLE_ARG=$expectedTarget; actual value was ${actualOverride ?: "<missing>"}",
+        actualOverride == expectedTarget,
+    )
+}
+
+private fun Description.classDisableOverrideTarget(): String {
+    return testClass?.name ?: className ?: displayName
+}
+
+private fun Description.methodDisableOverrideTarget(): String {
+    val resolvedClassName = classDisableOverrideTarget()
+    // Parameterized runners may append [index]; strip it to match --symbol format.
+    val resolvedMethodName = methodName?.substringBefore('[')
+    return resolvedMethodName?.let { "$resolvedClassName#$it" } ?: resolvedClassName
+}
+
+/**
+ * Disables a test unless instrumentation arg "francis.overrideDisable" matches this annotation
+ * target: class name for class-level @Disable, fully-qualified method name for method-level
+ * @Disable (for example: com.squareup.MyTest#myMethod).
+ *
+ * The annotation signature intentionally matches @Ignore.
+ */
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class Disable(val value: String = "")

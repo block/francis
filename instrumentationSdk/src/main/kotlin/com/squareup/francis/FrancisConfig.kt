@@ -23,7 +23,7 @@ class FrancisConfig internal constructor(
 
     companion object {
         internal const val OVERRIDE_DISABLE_ARG = "francis.overrideDisable"
-        internal const val ITERATIONS_ARG = "francis.iterations"
+        internal const val ITERATIONS_ARG = "francis.overrideIterations"
         internal const val PROFILER_ARG = "francis.profiler"
         internal const val ADDITIONAL_TEST_OUTPUT_DIR_ARG = "additionalTestOutputDir"
         internal const val SIMPLEPERF_OUTPUT_DIR_ARG = "simpleperfOutputDir"

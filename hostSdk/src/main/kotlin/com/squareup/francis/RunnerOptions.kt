@@ -24,7 +24,7 @@ interface RunnerValues {
   val dryRun: Boolean
   val instrumentationArgs: Map<String, String>
   val hostOutputDir: String
-  val iterations: Int?
+  val overrideIterations: Int?
   val profiler: String?
   val simpleperfCallGraph: String?
   val perfettoConfigPath: String?
@@ -122,9 +122,13 @@ open class RunnerOptions(
     }
   }
 
-  protected val iterationsOption by option("--iterations", "-n", help = "Number of iterations to run for each benchmark. Requires the instrumentation SDK.")
+  protected val overrideIterationsOption by option(
+    "--iterations",
+    "-n",
+    help = "Override the number of iterations to run for each benchmark. Requires the instrumentation SDK."
+  )
     .int()
-  override val iterations: Int? by lazy { iterationsOption }
+  override val overrideIterations: Int? by lazy { overrideIterationsOption }
 
   override val profiler: String? = null
   override val simpleperfCallGraph: String? = null

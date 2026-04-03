@@ -54,7 +54,7 @@ class Benchmark(
       "androidx.benchmark.suppressErrors" to (if (runnerVals.suppressErrors) "LOW-BATTERY,DEBUGGABLE,EMULATOR" else ""),
       "androidx.benchmark.compilation.enabled" to runnerVals.aot.toString(),
       "androidx.benchmark.dryRunMode.enable" to runnerVals.dryRun.toString(),
-      "francis.iterations" to runnerVals.iterations?.toString(),
+      "francis.overrideIterations" to runnerVals.overrideIterations?.toString(),
       "francis.profiler" to runnerVals.profiler,
       "francis.perfettoConfigPath" to devicePerfettoConfigPath,
     )

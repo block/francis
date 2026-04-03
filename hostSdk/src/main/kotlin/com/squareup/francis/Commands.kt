@@ -336,7 +336,7 @@ open class PerfettoCommand(
     val optsWithProfiler = object : RunnerValues by runnerVals {
       override val profiler: String = "perfetto"
       override val perfettoConfigPath: String? = configPath
-      override val iterations: Int? = runnerVals.iterations ?: 1
+      override val overrideIterations: Int? = runnerVals.overrideIterations ?: 1
       override val delegate: RunnerValues get() = runnerVals
     }
     runBenchmark(baseOpts, optsWithProfiler)
@@ -472,7 +472,7 @@ open class SimpleperfCommand(
     val optsWithProfiler = object : RunnerValues by runnerVals {
       override val profiler: String = "simpleperf"
       override val simpleperfCallGraph: String? = callGraphValue
-      override val iterations: Int? = runnerVals.iterations ?: 1
+      override val overrideIterations: Int? = runnerVals.overrideIterations ?: 1
       override val delegate: RunnerValues get() = runnerVals
     }
     runBenchmark(baseOpts, optsWithProfiler)

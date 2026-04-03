@@ -13,39 +13,58 @@ class ReleaseContext(val francisDir: File) {
     val gradleProperties: File = francisDir.resolve("gradle.properties")
     val releasesDir: File = francisDir.resolve("releases")
     val activeDir: File = releasesDir.resolve("active")
-
-    val currentVersion: String by lazy { readVersion() }
-    val releaseVersion: String by lazy { readActiveReleaseVersion() ?: currentVersion.removeSuffix("-SNAPSHOT") }
-    val postReleaseVersion: String by lazy { incrementSemver(releaseVersion) }
-    val releaseTag: String by lazy { "v$releaseVersion" }
-    val releaseBranch: String by lazy { "release/$releaseVersion" }
-    val artifactsDir: File get() = activeDir
-    val stepsDir: File get() = activeDir.resolve("steps")
     private val versionFile: File get() = activeDir.resolve("version")
 
+    val currentVersion: String by lazy { readGradlePropertiesVersion() }
+    val persistedReleaseVersion: String? by lazy { readActiveReleaseVersion() }
+    val persistedPostReleaseVersion: String by lazy {
+        incrementSemver(requireNotNull(persistedReleaseVersion) {
+            "No persisted release version found in $versionFile"
+        })
+    }
+    val releaseTag: String by lazy {
+        "v${requireNotNull(persistedReleaseVersion) { "No persisted release version found in $versionFile" }}"
+    }
+    val releaseBranch: String by lazy {
+        "release/${requireNotNull(persistedReleaseVersion) { "No persisted release version found in $versionFile" }}"
+    }
+    val artifactsDir: File get() = activeDir
+    val stepsDir: File get() = activeDir.resolve("steps")
+
+    fun deriveReleaseVersion(): String {
+        require(currentVersion.endsWith("-SNAPSHOT")) {
+            "Current version must end in -SNAPSHOT (was '$currentVersion')"
+        }
+        return currentVersion.removeSuffix("-SNAPSHOT")
+    }
+
+    fun derivePostReleaseVersion(): String = incrementSemver(deriveReleaseVersion())
+
     private fun readActiveReleaseVersion(): String? {
-        val file = activeDir.resolve("version")
-        return if (file.exists()) file.readText().trim() else null
+        return if (versionFile.exists()) versionFile.readText().trim() else null
     }
 
     fun persistReleaseVersion() {
         activeDir.mkdirs()
-        versionFile.writeText(releaseVersion)
+        versionFile.writeText(deriveReleaseVersion())
     }
 
     fun finalizeRelease() {
-        val finalDir = releasesDir.resolve(releaseVersion)
+        val persistedReleaseVersion = requireNotNull(persistedReleaseVersion) {
+            "No persisted release version found in $versionFile"
+        }
+        val finalDir = releasesDir.resolve(persistedReleaseVersion)
         require(!finalDir.exists()) { "Release directory already exists: $finalDir" }
         check(activeDir.renameTo(finalDir)) { "Failed to rename $activeDir to $finalDir" }
     }
 
-    fun readVersion(): String {
+    fun readGradlePropertiesVersion(): String {
         val line = gradleProperties.readLines().find { it.startsWith("francis.version=") }
             ?: error("Could not find francis.version in gradle.properties")
         return line.substringAfter("=").trim()
     }
 
-    fun writeVersion(version: String) {
+    fun writeGradlePropertiesVersion(version: String) {
         val lines = gradleProperties.readLines().map { line ->
             if (line.startsWith("francis.version=")) "francis.version=$version" else line
         }

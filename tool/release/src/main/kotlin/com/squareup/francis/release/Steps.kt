@@ -6,6 +6,11 @@ import kotlin.system.exitProcess
 enum class Steps(val stepName: String) {
     PROMPT("prompt") {
         override fun run() {
+            val releaseVersion = ctx.deriveReleaseVersion()
+            val derivedPostReleaseVersion = ctx.derivePostReleaseVersion()
+            val releaseBranch = "release/$releaseVersion"
+            val releaseTag = "v$releaseVersion"
+
             if (ctx.activeDir.exists()) {
                 error("""
                     |A release is already in progress (releases/active exists).
@@ -17,8 +22,8 @@ enum class Steps(val stepName: String) {
                     |  rm -r releases/active
                     |
                     |You may also need to clean up git artifacts (if they were created):
-                    |  git checkout main && git branch -D ${ctx.releaseBranch} && git push origin --delete ${ctx.releaseBranch}
-                    |  git tag -d ${ctx.releaseTag} && git push origin --delete ${ctx.releaseTag}
+                    |  git checkout main && git branch -D $releaseBranch && git push origin --delete $releaseBranch
+                    |  git tag -d $releaseTag && git push origin --delete $releaseTag
                 """.trimMargin())
             }
 
@@ -28,12 +33,12 @@ enum class Steps(val stepName: String) {
             println("═══════════════════════════════════════════════════════════════")
             println()
             println("  Current version:      ${ctx.currentVersion}")
-            println("  Release version:      ${ctx.releaseVersion}")
-            println("  Post-release version: ${ctx.postReleaseVersion}")
+            println("  Release version:      $releaseVersion")
+            println("  Post-release version: $derivedPostReleaseVersion")
             println()
             println("  This will:")
-            println("    • Create release branch: ${ctx.releaseBranch}")
-            println("    • Tag the release as: ${ctx.releaseTag}")
+            println("    • Create release branch: $releaseBranch")
+            println("    • Tag the release as: $releaseTag")
             println("    • Publish to Maven Central")
             println("    • Create GitHub release")
             println("    • Update Homebrew formula")
@@ -41,8 +46,8 @@ enum class Steps(val stepName: String) {
             println()
             println("To abandon this release later, run:")
             println("  rm -r releases/active")
-            println("  git checkout main && git branch -D ${ctx.releaseBranch} && git push origin --delete ${ctx.releaseBranch}")
-            println("  git tag -d ${ctx.releaseTag} && git push origin --delete ${ctx.releaseTag}")
+            println("  git checkout main && git branch -D $releaseBranch && git push origin --delete $releaseBranch")
+            println("  git tag -d $releaseTag && git push origin --delete $releaseTag")
             println()
 
             print("Do you want to proceed with this release? (yes/no): ")
@@ -50,7 +55,7 @@ enum class Steps(val stepName: String) {
             val response = readLine()?.trim()?.lowercase()
             if (response != "yes") {
                 println("Release cancelled.")
-                exitProcess(0)
+                exitProcess(1)
             }
 
             ctx.persistReleaseVersion()
@@ -60,35 +65,47 @@ enum class Steps(val stepName: String) {
     CREATE_BRANCH("create-branch") {
         override fun run() {
             ensureCleanGitRepo()
+            val persistedReleaseVersion = requireNotNull(ctx.persistedReleaseVersion) {
+                "No persisted release version found. Run the prompt step first."
+            }
 
             val branch = ctx.currentBranch()
             require(branch == "main") { "Must run from main branch (currently on '$branch')" }
             require(ctx.currentVersion.endsWith("-SNAPSHOT")) {
                 "Current version must end in -SNAPSHOT (was '${ctx.currentVersion}')"
             }
+            require(persistedReleaseVersion == ctx.deriveReleaseVersion()) {
+                "Persisted release version '$persistedReleaseVersion' does not match current version '${ctx.currentVersion}'"
+            }
 
             println("Creating release branch: ${ctx.releaseBranch}")
             check(ctx.runCommand(listOf("git", "checkout", "-b", ctx.releaseBranch)))
 
-            println("Updating version to ${ctx.releaseVersion}")
-            ctx.writeVersion(ctx.releaseVersion)
+            println("Updating version to $persistedReleaseVersion")
+            ctx.writeGradlePropertiesVersion(persistedReleaseVersion)
 
             check(ctx.runCommand(listOf("git", "add", "gradle.properties")))
-            check(ctx.runCommand(listOf("git", "commit", "-m", "Prepare ${ctx.releaseVersion} release")))
+            check(ctx.runCommand(listOf("git", "commit", "-m", "Prepare $persistedReleaseVersion release")))
             check(ctx.runCommand(listOf("git", "push", "--set-upstream", "origin", ctx.releaseBranch)))
         }
     },
 
     TAG_RELEASE("tag-release") {
         override fun run() {
+            val persistedReleaseVersion = requireNotNull(ctx.persistedReleaseVersion) {
+                "No persisted release version found in releases/active/version"
+            }
             println("Tagging release as ${ctx.releaseTag}")
-            check(ctx.runCommand(listOf("git", "tag", "-a", ctx.releaseTag, "-m", "Release ${ctx.releaseVersion}")))
+            check(ctx.runCommand(listOf("git", "tag", "-a", ctx.releaseTag, "-m", "Release $persistedReleaseVersion")))
             check(ctx.runCommand(listOf("git", "push", "origin", ctx.releaseTag)))
         }
     },
 
     WAIT_RELEASE("wait-release") {
         override fun run() {
+            val persistedReleaseVersion = requireNotNull(ctx.persistedReleaseVersion) {
+                "No persisted release version found in releases/active/version"
+            }
             println("Waiting for release workflow to complete...")
 
             waitForWorkflow("release", tag = ctx.releaseTag, commit = ctx.headSha())
@@ -96,8 +113,8 @@ enum class Steps(val stepName: String) {
             println()
             println("GitHub release and Maven Central artifacts published:")
             println("  GitHub Release:        https://github.com/block/francis/releases/tag/${ctx.releaseTag}")
-            println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/${ctx.releaseVersion}")
-            println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/${ctx.releaseVersion}")
+            println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/$persistedReleaseVersion")
+            println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/$persistedReleaseVersion")
             println()
             println("Note: Maven Central artifacts may take up to 30 minutes to become available.")
         }
@@ -113,17 +130,20 @@ enum class Steps(val stepName: String) {
 
     BUMP_SNAPSHOT("bump-snapshot") {
         override fun run() {
-            println("Bumping version to ${ctx.postReleaseVersion}")
-            ctx.writeVersion(ctx.postReleaseVersion)
+            println("Bumping version to ${ctx.persistedPostReleaseVersion}")
+            ctx.writeGradlePropertiesVersion(ctx.persistedPostReleaseVersion)
 
             check(ctx.runCommand(listOf("git", "add", "gradle.properties")))
-            check(ctx.runCommand(listOf("git", "commit", "-m", "Start ${ctx.postReleaseVersion} development")))
+            check(ctx.runCommand(listOf("git", "commit", "-m", "Start ${ctx.persistedPostReleaseVersion} development")))
             check(ctx.runCommand(listOf("git", "push", "origin", "main")))
         }
     },
 
     TRIGGER_FORMULA_BUMP("trigger-formula-bump") {
         override fun run() {
+            val persistedReleaseVersion = requireNotNull(ctx.persistedReleaseVersion) {
+                "No persisted release version found in releases/active/version"
+            }
             val releaseArtifactUrl = "https://github.com/block/francis/releases/download/${ctx.releaseTag}/francis-release.tar.gz"
             println("Triggering Homebrew tap update for ${ctx.releaseTag}...")
             check(ctx.runCommand(listOf(
@@ -139,13 +159,13 @@ enum class Steps(val stepName: String) {
 
             println()
             println("═══════════════════════════════════════════════════════════════")
-            println("          Release ${ctx.releaseVersion} completed successfully!          ")
+            println("          Release $persistedReleaseVersion completed successfully!          ")
             println("═══════════════════════════════════════════════════════════════")
             println()
             println("All release artifacts:")
             println("  GitHub Release:        https://github.com/block/francis/releases/tag/${ctx.releaseTag}")
-            println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/${ctx.releaseVersion}")
-            println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/${ctx.releaseVersion}")
+            println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/$persistedReleaseVersion")
+            println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/$persistedReleaseVersion")
             println("  Homebrew:              https://github.com/block/homebrew-tap/blob/main/Formula/francis.rb")
             println()
         }
@@ -267,4 +287,3 @@ private fun waitForWorkflowInRepo(workflow: String, repo: String, timeoutMinutes
         error("Workflow '$workflow' in '$repo' failed!")
     }
 }
-

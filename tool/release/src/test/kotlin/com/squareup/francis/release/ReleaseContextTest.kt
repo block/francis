@@ -53,7 +53,7 @@ class ReleaseContextTest {
         val releasesDir = francisDir.resolve("releases")
         val release014 = releasesDir.resolve("0.0.14/steps")
         release014.mkdirs()
-        release014.resolve("07-trigger-formula-bump").writeText("done\n")
+        release014.resolve("06-bump-snapshot").writeText("done\n")
 
         val context = ReleaseContext(francisDir)
 

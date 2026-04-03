@@ -41,7 +41,7 @@ enum class Steps(val stepName: String) {
             println("    • Tag the release as: $releaseTag")
             println("    • Publish to Maven Central")
             println("    • Create GitHub release")
-            println("    • Update Homebrew formula")
+            println("    • Update Homebrew formula from the release workflow")
             println("    • Merge to main and bump version")
             println()
             println("To abandon this release later, run:")
@@ -111,10 +111,12 @@ enum class Steps(val stepName: String) {
             waitForWorkflow("release", tag = ctx.releaseTag, commit = ctx.headSha())
 
             println()
-            println("GitHub release and Maven Central artifacts published:")
+            println("GitHub release workflow completed:")
             println("  GitHub Release:        https://github.com/block/francis/releases/tag/${ctx.releaseTag}")
             println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/$persistedReleaseVersion")
             println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/$persistedReleaseVersion")
+            println("  Homebrew Workflow:     https://github.com/block/homebrew-tap/actions/workflows/bump-formula.yaml?query=event%3Aworkflow_dispatch")
+            println("  Homebrew PRs:          https://github.com/block/homebrew-tap/pulls?q=is%3Apr+base%3Amain+head%3Abump-francis-to-$persistedReleaseVersion")
             println()
             println("Note: Maven Central artifacts may take up to 30 minutes to become available.")
         }
@@ -136,36 +138,15 @@ enum class Steps(val stepName: String) {
             check(ctx.runCommand(listOf("git", "add", "gradle.properties")))
             check(ctx.runCommand(listOf("git", "commit", "-m", "Start ${ctx.persistedPostReleaseVersion} development")))
             check(ctx.runCommand(listOf("git", "push", "origin", "main")))
-        }
-    },
-
-    TRIGGER_FORMULA_BUMP("trigger-formula-bump") {
-        override fun run() {
-            val persistedReleaseVersion = requireNotNull(ctx.persistedReleaseVersion) {
-                "No persisted release version found in releases/active/version"
-            }
-            val releaseArtifactUrl = "https://github.com/block/francis/releases/download/${ctx.releaseTag}/francis-release.tar.gz"
-            println("Triggering Homebrew tap update for ${ctx.releaseTag}...")
-            check(ctx.runCommand(listOf(
-                "gh", "workflow", "run", "bump-formula.yaml",
-                "--repo", "block/homebrew-tap",
-                "--field", "repo=block/francis",
-                "--field", "formula=francis",
-                "--field", "tag=${ctx.releaseTag}",
-                "--field", "artifact_url=$releaseArtifactUrl"
-            )))
-
-            waitForWorkflowInRepo("bump-formula.yaml", "block/homebrew-tap", timeoutMinutes = 10)
-
             println()
             println("═══════════════════════════════════════════════════════════════")
-            println("          Release $persistedReleaseVersion completed successfully!          ")
+            println("          Release ${ctx.persistedReleaseVersion} completed successfully!          ")
             println("═══════════════════════════════════════════════════════════════")
             println()
             println("All release artifacts:")
             println("  GitHub Release:        https://github.com/block/francis/releases/tag/${ctx.releaseTag}")
-            println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/$persistedReleaseVersion")
-            println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/$persistedReleaseVersion")
+            println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/${ctx.persistedReleaseVersion}")
+            println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/${ctx.persistedReleaseVersion}")
             println("  Homebrew:              https://github.com/block/homebrew-tap/blob/main/Formula/francis.rb")
             println()
         }
@@ -247,43 +228,5 @@ private fun waitForWorkflow(workflow: String, tag: String, commit: String, timeo
         println("✓ Workflow '$workflow' completed successfully!")
     } else {
         error("Workflow '$workflow' failed!")
-    }
-}
-
-private fun waitForWorkflowInRepo(workflow: String, repo: String, timeoutMinutes: Int = 10) {
-    Thread.sleep(5_000) // Give workflow time to start
-
-    // Find the most recent run ID for this workflow
-    var runId: String? = null
-    repeat(10) {
-        val result = ctx.runCommandOutput(listOf(
-            "gh", "run", "list",
-            "--workflow=$workflow",
-            "--repo=$repo",
-            "--json", "databaseId",
-            "--jq", ".[0].databaseId"
-        )).trim()
-        if (result.isNotEmpty() && result != "null") {
-            runId = result
-            return@repeat
-        }
-        println("  Waiting for $workflow workflow to start in $repo...")
-        Thread.sleep(10_000)
-    }
-
-    requireNotNull(runId) { "Could not find workflow run for $workflow in $repo" }
-
-    // Use 'gh run watch' to stream status (avoids rate limiting from repeated API calls)
-    println("Watching workflow run $runId in $repo...")
-    val success = ctx.runCommand(listOf(
-        "gh", "run", "watch", runId!!,
-        "--repo=$repo",
-        "--exit-status"
-    ))
-
-    if (success) {
-        println("✓ Workflow '$workflow' in '$repo' completed successfully!")
-    } else {
-        error("Workflow '$workflow' in '$repo' failed!")
     }
 }

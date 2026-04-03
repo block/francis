@@ -68,3 +68,30 @@ jobs:
             --notes "Release bundle including Maven-published JAR and other artifacts."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Homebrew dispatch token
+        id: homebrew-dispatch-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.BLOCK_HOMEBREW_TAP_APP_ID }}
+          private-key: ${{ secrets.BLOCK_HOMEBREW_TAP_PRIVATE_KEY }}
+          owner: block
+          repositories: homebrew-tap
+
+      - name: Trigger Homebrew formula bump
+        env:
+          GITHUB_TOKEN: ${{ steps.homebrew-dispatch-token.outputs.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_ARTIFACT_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/francis-release.tar.gz
+        run: |
+          set -euo pipefail
+
+          gh workflow run bump-formula.yaml \
+            --repo block/homebrew-tap \
+            --field repo=${{ github.repository }} \
+            --field formula=francis \
+            --field tag=${RELEASE_TAG} \
+            --field artifact_url=${RELEASE_ARTIFACT_URL}
+
+          echo "Dispatched Homebrew formula bump for ${RELEASE_TAG}."
+          echo "Workflow runs: https://github.com/block/homebrew-tap/actions/workflows/bump-formula.yaml?query=event%3Aworkflow_dispatch"

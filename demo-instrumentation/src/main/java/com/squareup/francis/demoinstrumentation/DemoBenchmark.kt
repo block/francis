@@ -3,11 +3,11 @@ package com.squareup.francis.demoinstrumentation
 import com.squareup.francis.DisplayedWaiter
 import com.squareup.francis.Disable
 import com.squareup.francis.FrancisBenchmarkRule
+import com.squareup.francis.FrancisConfig
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.StartupTimingMetric
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
-import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -16,10 +16,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @LargeTest
 class DemoBenchmark {
-    companion object {
-        private const val DEMO_APP_PACKAGE = "com.squareup.francis.demoapp"
-        private const val OVERRIDE_DISABLE_ARG = "francis.overrideDisable"
-    }
+    private val francisConfig = FrancisConfig.current
 
     @get:Rule
     val benchmarkRule = FrancisBenchmarkRule()
@@ -36,7 +33,7 @@ class DemoBenchmark {
     @Test
     fun disabledUnlessMethodTargeted() {
         val expectedTarget = "${this::class.java.name}#disabledUnlessMethodTargeted"
-        val actualOverride = InstrumentationRegistry.getArguments().getString(OVERRIDE_DISABLE_ARG)
+        val actualOverride = francisConfig.overrideDisableTarget
         assertEquals(expectedTarget, actualOverride)
 
         // Also run a real benchmark so `francis bench` can pull output artifacts successfully.
@@ -44,7 +41,7 @@ class DemoBenchmark {
     }
 
     private fun runStartupBenchmark(iterations: Int) = benchmarkRule.measureRepeated(
-        packageName = DEMO_APP_PACKAGE,
+        packageName = francisConfig.appPackage,
         metrics = listOf(StartupTimingMetric()),
         iterations = iterations,
         startupMode = StartupMode.COLD,

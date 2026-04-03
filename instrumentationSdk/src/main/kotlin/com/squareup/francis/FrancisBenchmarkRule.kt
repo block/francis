@@ -13,13 +13,10 @@ import androidx.benchmark.macro.Metric
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.benchmark.traceprocessor.TraceProcessor
-import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assume.assumeTrue
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
-
-private const val OVERRIDE_DISABLE_ARG = "francis.overrideDisable"
 
 @OptIn(ExperimentalMetricApi::class)
 private class NoOpMetric : TraceMetric() {
@@ -31,6 +28,7 @@ private class NoOpMetric : TraceMetric() {
 
 class FrancisBenchmarkRule : TestRule {
     private val macrobenchmarkRule = MacrobenchmarkRule()
+    private val francisConfig by lazy { FrancisConfig.current }
     private lateinit var testDescription: Description
 
     override fun apply(base: Statement, description: Description): Statement {
@@ -108,14 +106,19 @@ class FrancisBenchmarkRule : TestRule {
         var effectiveConfig = experimentalConfig
         var effectiveMeasureBlock = measureBlock
 
-        when (francisProfiler) {
+        when (francisConfig.profiler) {
             "perfetto" -> {
                 effectiveMetrics = listOf(NoOpMetric())
                 effectiveConfig = ExperimentalConfig(perfettoConfig = createPerfettoConfig(packageName))
             }
             "simpleperf" -> {
                 effectiveMeasureBlock = {
-                    SimpleperfProfiler(simpleperfOutputDir, testName, packageName, simpleperfCallGraph).use { profiler ->
+                    SimpleperfProfiler(
+                        requireNotNull(francisConfig.simpleperfOutputDir) { "${FrancisConfig.SIMPLEPERF_OUTPUT_DIR_ARG} not set" },
+                        testName,
+                        packageName,
+                        francisConfig.simpleperfCallGraph,
+                    ).use { profiler ->
                         profiler.start()
                         measureBlock()
                     }
@@ -126,7 +129,7 @@ class FrancisBenchmarkRule : TestRule {
         macrobenchmarkRule.measureRepeated(
             packageName = packageName,
             metrics = effectiveMetrics,
-            iterations = francisIterations ?: iterations,
+            iterations = francisConfig.overrideIterations ?: iterations,
             experimentalConfig = effectiveConfig,
             compilationMode = compilationMode,
             startupMode = startupMode,
@@ -135,43 +138,12 @@ class FrancisBenchmarkRule : TestRule {
         )
     }
 
-    companion object {
-        private val args by lazy { InstrumentationRegistry.getArguments() }
-
-        private val francisIterations: Int? by lazy {
-            args.getString("francis.iterations")?.toIntOrNull()
-        }
-
-        private val francisProfiler: String? by lazy {
-            args.getString("francis.profiler")
-        }
-
-        // https://developer.android.com/topic/performance/benchmarking/macrobenchmark-instrumentation-args#additional-test-output
-        private val additionalTestOutputDir: String by lazy {
-            args.getString("additionalTestOutputDir")
-                ?: throw IllegalStateException("additionalTestOutputDir not set")
-        }
-
-        private val simpleperfOutputDir: String by lazy {
-            args.getString("simpleperfOutputDir")
-                ?: throw IllegalStateException("simpleperfOutputDir not set")
-        }
-
-        private val simpleperfCallGraph: String? by lazy {
-            args.getString("simpleperfCallGraph")
-        }
-
-        private val francisPerfettoConfigPath: String? by lazy {
-            args.getString("francis.perfettoConfigPath")
-        }
-
-        @OptIn(ExperimentalPerfettoCaptureApi::class)
-        private fun createPerfettoConfig(packageName: String): PerfettoConfig {
-            val configText = francisPerfettoConfigPath?.let { path ->
-                java.io.File(path).readText()
-            } ?: PerfettoConfigTemplate.forPackage(packageName)
-            return PerfettoConfig.Text(configText)
-        }
+    @OptIn(ExperimentalPerfettoCaptureApi::class)
+    private fun createPerfettoConfig(packageName: String): PerfettoConfig {
+        val configText = francisConfig.perfettoConfigPath?.let { path ->
+            java.io.File(path).readText()
+        } ?: PerfettoConfigTemplate.forPackage(packageName)
+        return PerfettoConfig.Text(configText)
     }
 }
 
@@ -185,12 +157,12 @@ private fun Description.requireEnabled() {
         else -> return
     }
 
-    val actualOverride = InstrumentationRegistry.getArguments().getString(OVERRIDE_DISABLE_ARG)
+    val actualOverride = FrancisConfig.current.overrideDisableTarget
     val reasonSuffix = disable.value.takeIf(String::isNotBlank)?.let { " ($it)" } ?: ""
 
     assumeTrue(
         "$this is disabled$reasonSuffix. To run it, set instrumentation arg " +
-            "$OVERRIDE_DISABLE_ARG=$expectedTarget; actual value was ${actualOverride ?: "<missing>"}",
+            "${FrancisConfig.OVERRIDE_DISABLE_ARG}=$expectedTarget; actual value was ${actualOverride ?: "<missing>"}",
         actualOverride == expectedTarget,
     )
 }

@@ -17,12 +17,37 @@ private val buildTools = File("${System.getenv("ANDROID_HOME")}/build-tools")
 private val latestBuildTools = "$buildTools/${buildTools.list()!!.max()}"
 private val aapt2 = "$latestBuildTools/aapt2"
 
-fun packageNameFromApk(apk: String): String {
+private fun apkBadging(apk: String): String {
   return subproc.stdout(aapt2, "dump", "badging", apk) { logPriority = LogPriority.DEBUG }
-    .lines()
-    .first { it.startsWith("package:") }
-    .substringAfter("name='")
-    .substringBefore("'")
+}
+
+private fun parseBadgingAttribute(badging: String, linePrefix: String, attribute: String): String? {
+  return badging.lineSequence()
+    .firstOrNull { it.startsWith(linePrefix) }
+    ?.substringAfter("$attribute='", missingDelimiterValue = "")
+    ?.substringBefore("'")
+    ?.takeIf { it.isNotEmpty() }
+}
+
+internal fun parsePackageNameFromBadging(badging: String): String? {
+  return parseBadgingAttribute(badging, "package:", "name")
+}
+
+internal fun parseTargetPackageFromBadging(badging: String): String? {
+  return parseBadgingAttribute(badging, "instrumentation:", "targetPackage")
+}
+
+fun packageNameFromApk(apk: String): String {
+  return parsePackageNameFromBadging(apkBadging(apk))
+    ?: throw PithyException(1, "Unable to determine package name from APK: $apk")
+}
+
+fun targetPackageFromInstrumentationApk(apk: String): String {
+  return parseTargetPackageFromBadging(apkBadging(apk))
+    ?: throw PithyException(
+      1,
+      "Instrumentation APK does not declare android:targetPackage: $apk. Use --app to specify the app under test."
+    )
 }
 
 class Adb(

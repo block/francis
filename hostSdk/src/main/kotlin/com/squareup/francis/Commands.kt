@@ -77,7 +77,8 @@ private class ResolveCommand(
   override fun run() {
     baseOpts.setup()
     // Force resolution of lazy properties (populates resolution cache)
-    runnerVals.appApk
+    runnerVals.appApkOrNull
+    runnerVals.appPackageOrNull
     runnerVals.instrumentationApk
   }
 }
@@ -272,13 +273,7 @@ open class PerfettoCommand(
   }
 
   private fun runManualPerfetto(): File? {
-    val appPackage = runnerVals.appApkOrNull?.let { app ->
-      if (app.endsWith(".apk") || app.endsWith(".aab")) {
-        packageNameFromApk(app)
-      } else {
-        app
-      }
-    }
+    val appPackage = runnerVals.appPackageOrNull
 
     val configText = perfettoConfigFile?.readText()
       ?: if (appPackage != null) PerfettoConfigTemplate.forPackage(appPackage) else PerfettoConfigTemplate.forAllApps()
@@ -412,13 +407,7 @@ open class SimpleperfCommand(
   }
 
   private fun runManualSimpleperf(): File {
-    val appPackage = runnerVals.appApkOrNull?.let { app ->
-      if (app.endsWith(".apk") || app.endsWith(".aab")) {
-        packageNameFromApk(app)
-      } else {
-        app
-      }
-    }
+    val appPackage = runnerVals.appPackageOrNull
 
     val deviceTracePath = "${FrancisConstants.DEVICE_FRANCIS_DIR}/perf.data"
     val outputDir = File(runnerVals.hostOutputDir)

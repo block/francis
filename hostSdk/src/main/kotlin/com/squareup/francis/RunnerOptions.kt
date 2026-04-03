@@ -12,6 +12,8 @@ interface RunnerValues {
   val base: BaseValues
   val appApkOrNull: String?
   val appApk: String get() = appApkOrNull ?: throw PithyException(1, "App APK path not provided. Use --app to specify.")
+  val appPackageOrNull: String?
+  val appPackage: String get() = appPackageOrNull ?: throw PithyException(1, "App package could not be determined. Use --app or --instrumentation to specify the app under test.")
   val instrumentationApkOrNull: String?
   val instrumentationApk: String get() = instrumentationApkOrNull ?: throw PithyException(1, "Instrumentation APK path not provided. Use --instrumentation to specify.")
   val testSymbolOrNull: String?
@@ -31,12 +33,29 @@ interface RunnerValues {
   val delegate: RunnerValues get() = this
 }
 
+internal fun resolveAppPackageOrNull(
+  appApkOrNull: String?,
+  instrumentationApkOrNull: String?,
+  packageNameResolver: (String) -> String = ::packageNameFromApk,
+  targetPackageResolver: (String) -> String = ::targetPackageFromInstrumentationApk,
+): String? {
+  return when {
+    appApkOrNull != null -> packageNameResolver(appApkOrNull)
+    instrumentationApkOrNull != null -> targetPackageResolver(instrumentationApkOrNull)
+    else -> null
+  }
+}
+
 open class RunnerOptions(
   val config: BaseConfig = BaseConfig(),
   override val base: BaseOptions = BaseOptions(config),
 ): OptionGroup(), RunnerValues {
   override val hostOutputDir: String get() = config.hostOutputDir
-  protected val appApkOption by option("-A", "--app", help = "Path to the APK to instrument, or package name if not ending in .apk/.aab.")
+  protected val appApkOption by option(
+    "-A",
+    "--app",
+    help = "Path to the APK to instrument, or package name if not ending in .apk/.aab. If omitted, Francis uses android:targetPackage from --instrumentation and assumes the app is already installed."
+  )
   override val appApkOrNull: String? by lazy {
     val app = appApkOption ?: return@lazy null
     if (app.endsWith(".apk") || app.endsWith(".aab")) {
@@ -45,6 +64,13 @@ open class RunnerOptions(
     } else {
       log { "Interpreting --app as package name: $app" }
       ApkCache.getHostPath(app)
+    }
+  }
+  override val appPackageOrNull: String? by lazy {
+    resolveAppPackageOrNull(appApkOrNull, instrumentationApkOrNull)?.also { appPackage ->
+      if (appApkOption == null && instrumentationApkOrNull != null) {
+        log { "Using --instrumentation targetPackage as app under test: $appPackage" }
+      }
     }
   }
 

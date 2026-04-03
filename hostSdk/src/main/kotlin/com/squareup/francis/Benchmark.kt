@@ -14,10 +14,9 @@ class Benchmark(
   val runnerVals: RunnerValues,
 ) {
   val instrumentationApk = runnerVals.instrumentationApk
-  val appApk = runnerVals.appApk
+  val appApkOrNull = runnerVals.appApkOrNull
 
   val instrumentationPackage: String by lazy { packageNameFromApk(instrumentationApk) }
-  val appPackage: String by lazy { packageNameFromApk(appApk) }
   val deviceOutputDir: String by lazy { "/sdcard/Android/media/$instrumentationPackage/additional_test_output" }
 
   // Only used with simpleperf
@@ -72,7 +71,7 @@ class Benchmark(
       adb.shellRun("mkdir", "-p", it, forceRoot = isRootAvailable) { logPriority = LogPriority.DEBUG }
     }
     pushPerfettoConfigIfNeeded()
-    ensureInstalled(appApk)
+    appApkOrNull?.let(::ensureInstalled)
     ensureInstalled(instrumentationApk)
 
     val cmdArgs = arrayOf(

@@ -16,8 +16,6 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @LargeTest
 class DemoBenchmark {
-    private val francisConfig = FrancisConfig.current
-
     @get:Rule
     val benchmarkRule = FrancisBenchmarkRule()
 
@@ -33,7 +31,7 @@ class DemoBenchmark {
     @Test
     fun disabledUnlessMethodTargeted() {
         val expectedTarget = "${this::class.java.name}#disabledUnlessMethodTargeted"
-        val actualOverride = francisConfig.overrideDisableTarget
+        val actualOverride = FrancisConfig.overrideDisableTarget
         assertEquals(expectedTarget, actualOverride)
 
         // Also run a real benchmark so `francis bench` can pull output artifacts successfully.
@@ -41,7 +39,7 @@ class DemoBenchmark {
     }
 
     private fun runStartupBenchmark(iterations: Int) = benchmarkRule.measureRepeated(
-        packageName = francisConfig.appPackage,
+        packageName = FrancisConfig.appPackage,
         metrics = listOf(StartupTimingMetric()),
         iterations = iterations,
         startupMode = StartupMode.COLD,

@@ -28,7 +28,6 @@ private class NoOpMetric : TraceMetric() {
 
 class FrancisBenchmarkRule : TestRule {
     private val macrobenchmarkRule = MacrobenchmarkRule()
-    private val francisConfig by lazy { FrancisConfig.current }
     private lateinit var testDescription: Description
 
     override fun apply(base: Statement, description: Description): Statement {
@@ -106,7 +105,7 @@ class FrancisBenchmarkRule : TestRule {
         var effectiveConfig = experimentalConfig
         var effectiveMeasureBlock = measureBlock
 
-        when (francisConfig.profiler) {
+        when (FrancisConfig.profiler) {
             "perfetto" -> {
                 effectiveMetrics = listOf(NoOpMetric())
                 effectiveConfig = ExperimentalConfig(perfettoConfig = createPerfettoConfig(packageName))
@@ -114,10 +113,10 @@ class FrancisBenchmarkRule : TestRule {
             "simpleperf" -> {
                 effectiveMeasureBlock = {
                     SimpleperfProfiler(
-                        requireNotNull(francisConfig.simpleperfOutputDir) { "${FrancisConfig.SIMPLEPERF_OUTPUT_DIR_ARG} not set" },
+                        requireNotNull(FrancisConfig.simpleperfOutputDir) { "${FrancisConfig.SIMPLEPERF_OUTPUT_DIR_ARG} not set" },
                         testName,
                         packageName,
-                        francisConfig.simpleperfCallGraph,
+                        FrancisConfig.simpleperfCallGraph,
                     ).use { profiler ->
                         profiler.start()
                         measureBlock()
@@ -129,7 +128,7 @@ class FrancisBenchmarkRule : TestRule {
         macrobenchmarkRule.measureRepeated(
             packageName = packageName,
             metrics = effectiveMetrics,
-            iterations = francisConfig.overrideIterations ?: iterations,
+            iterations = FrancisConfig.overrideIterations ?: iterations,
             experimentalConfig = effectiveConfig,
             compilationMode = compilationMode,
             startupMode = startupMode,
@@ -140,7 +139,7 @@ class FrancisBenchmarkRule : TestRule {
 
     @OptIn(ExperimentalPerfettoCaptureApi::class)
     private fun createPerfettoConfig(packageName: String): PerfettoConfig {
-        val configText = francisConfig.perfettoConfigPath?.let { path ->
+        val configText = FrancisConfig.perfettoConfigPath?.let { path ->
             java.io.File(path).readText()
         } ?: PerfettoConfigTemplate.forPackage(packageName)
         return PerfettoConfig.Text(configText)
@@ -157,7 +156,7 @@ private fun Description.requireEnabled() {
         else -> return
     }
 
-    val actualOverride = FrancisConfig.current.overrideDisableTarget
+    val actualOverride = FrancisConfig.overrideDisableTarget
     val reasonSuffix = disable.value.takeIf(String::isNotBlank)?.let { " ($it)" } ?: ""
 
     assumeTrue(

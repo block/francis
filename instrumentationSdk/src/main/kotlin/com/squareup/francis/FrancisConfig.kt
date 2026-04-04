@@ -13,7 +13,7 @@ object FrancisConfig {
         get() = InstrumentationRegistry.getArguments()
 
     val appPackage: String
-        get() = instrumentation.targetContext.packageName
+        get() = args.getString(OVERRIDE_APP_PACKAGE_ARG) ?: instrumentation.targetContext.packageName
 
     val instrumentationPackage: String
         get() = instrumentation.context.packageName
@@ -41,6 +41,7 @@ object FrancisConfig {
         get() = args.getString(PERFETTO_CONFIG_PATH_ARG)
 
     internal const val OVERRIDE_DISABLE_ARG = "francis.overrideDisable"
+    internal const val OVERRIDE_APP_PACKAGE_ARG = "francis.overrideAppPackage"
     internal const val ITERATIONS_ARG = "francis.overrideIterations"
     internal const val PROFILER_ARG = "francis.profiler"
     internal const val ADDITIONAL_TEST_OUTPUT_DIR_ARG = "additionalTestOutputDir"

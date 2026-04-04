@@ -9,6 +9,35 @@ import java.io.File
 
 // This lets instrumentation-side @Disable checks know what target Francis explicitly requested.
 private const val OVERRIDE_DISABLE_ARG = "francis.overrideDisable"
+private const val OVERRIDE_APP_PACKAGE_ARG = "francis.overrideAppPackage"
+
+internal fun buildInstrumentationArgsList(
+  runnerVals: RunnerValues,
+  deviceOutputDir: String,
+  simpleperfOutputDir: String?,
+  devicePerfettoConfigPath: String?,
+): List<String> {
+  val instrumentationArgs: Map<String, String?> = runnerVals.instrumentationArgs + mapOf(
+    "class" to runnerVals.testSymbol,
+    // Auto-wire override from --symbol so users don't need to pass this manually.
+    OVERRIDE_DISABLE_ARG to runnerVals.testSymbol,
+    // Preserve the host-resolved app package even when it differs from targetContext.packageName.
+    OVERRIDE_APP_PACKAGE_ARG to runnerVals.appPackageOrNull,
+    "additionalTestOutputDir" to deviceOutputDir,
+    "simpleperfOutputDir" to simpleperfOutputDir,
+    "simpleperfCallGraph" to runnerVals.simpleperfCallGraph,
+    "androidx.benchmark.suppressErrors" to (if (runnerVals.suppressErrors) "LOW-BATTERY,DEBUGGABLE,EMULATOR" else ""),
+    "androidx.benchmark.compilation.enabled" to runnerVals.aot.toString(),
+    "androidx.benchmark.dryRunMode.enable" to runnerVals.dryRun.toString(),
+    "francis.overrideIterations" to runnerVals.overrideIterations?.toString(),
+    "francis.profiler" to runnerVals.profiler,
+    "francis.perfettoConfigPath" to devicePerfettoConfigPath,
+  )
+
+  return instrumentationArgs
+    .flatMap { (k, v) -> if (v != null) listOf("-e", k, v) else emptyList() }
+}
+
 class Benchmark(
   val baseVals: BaseValues,
   val runnerVals: RunnerValues,
@@ -44,23 +73,12 @@ class Benchmark(
   }
 
   val instrumentationArgsList: List<String> by lazy {
-    val instrumentationArgs: Map<String, String?> = runnerVals.instrumentationArgs + mapOf(
-      "class" to runnerVals.testSymbol,
-      // Auto-wire override from --symbol so users don't need to pass this manually.
-      OVERRIDE_DISABLE_ARG to runnerVals.testSymbol,
-      "additionalTestOutputDir" to deviceOutputDir,
-      "simpleperfOutputDir" to simpleperfOutputDir,
-      "simpleperfCallGraph" to runnerVals.simpleperfCallGraph,
-      "androidx.benchmark.suppressErrors" to (if (runnerVals.suppressErrors) "LOW-BATTERY,DEBUGGABLE,EMULATOR" else ""),
-      "androidx.benchmark.compilation.enabled" to runnerVals.aot.toString(),
-      "androidx.benchmark.dryRunMode.enable" to runnerVals.dryRun.toString(),
-      "francis.overrideIterations" to runnerVals.overrideIterations?.toString(),
-      "francis.profiler" to runnerVals.profiler,
-      "francis.perfettoConfigPath" to devicePerfettoConfigPath,
+    buildInstrumentationArgsList(
+      runnerVals = runnerVals,
+      deviceOutputDir = deviceOutputDir,
+      simpleperfOutputDir = simpleperfOutputDir,
+      devicePerfettoConfigPath = devicePerfettoConfigPath,
     )
-
-    instrumentationArgs
-      .flatMap { (k, v) -> if (v != null) listOf("-e", k, v) else emptyList() }
   }
 
   fun run() {

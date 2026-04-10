@@ -113,3 +113,7 @@ If `@Disable` is on a method, target that method
 
 ## Development
 You can use `scripts/francis` to build and run francis during development. If you don't have a specific app/instrumentation that you want to test it with, you can use `scripts/francis-demo` - it's the same as `scripts/francis` but it includes predefined app/instrumentation apks.
+
+This repo provides a repo-local pre-push hook at `.hooks/pre-push`. In environments with shared hook dispatch configured (for example via `core.hooksPath`), it checks only the Kotlin files introduced by the push with `ktfmt`, so it won't block on older unformatted files elsewhere in the repo.
+
+CI also enforces formatting because `build` runs `check`, and `check` depends on `ktfmtCheck`.

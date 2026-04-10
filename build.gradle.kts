@@ -1,4 +1,5 @@
 import com.ncorti.ktfmt.gradle.KtfmtExtension
+import com.ncorti.ktfmt.gradle.tasks.KtfmtCheckTask
 
 buildscript {
   repositories {
@@ -42,6 +43,16 @@ tasks.named("ktfmtCheck") {
 tasks.named("ktfmtFormat") {
   description = "Run ktfmt formatting for the root build scripts and all modules."
   dependsOn(subprojects.map { "${it.path}:ktfmtFormat" })
+}
+
+tasks.register<KtfmtCheckTask>("ktfmtPushCheck") {
+  description = "Run ktfmt checks on an explicit set of Kotlin files, intended for git hooks."
+  group = "verification"
+  source =
+    fileTree(rootDir) {
+      include("**/*.kt", "**/*.kts")
+      exclude("**/build/**")
+    }
 }
 
 tasks.register<Copy>("releaseArtifacts") {

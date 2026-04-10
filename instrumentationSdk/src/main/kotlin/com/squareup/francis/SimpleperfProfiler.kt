@@ -6,9 +6,10 @@ import java.io.Closeable
 /**
  * Profiler that uses simpleperf to capture CPU profiles during benchmarks.
  *
- * @param outputDir Directory to write perf data files. Must be writable by shell (e.g. /data/local/tmp)
- *   since simpleperf runs as a shell process, not as the app.
- * @param targetPackage The package name of the app to profile (the app under test, not the instrumentation).
+ * @param outputDir Directory to write perf data files. Must be writable by shell (e.g.
+ *   /data/local/tmp) since simpleperf runs as a shell process, not as the app.
+ * @param targetPackage The package name of the app to profile (the app under test, not the
+ *   instrumentation).
  */
 internal class SimpleperfProfiler(
   private val outputDir: String,
@@ -24,16 +25,21 @@ internal class SimpleperfProfiler(
   fun start() {
     checkForExistingSimpleperf()
 
-    val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", java.util.Locale.US).format(java.util.Date())
-    val outputPath = "$outputDir/${testName}_iter${iteration.toString().padStart(3, '0')}_$timestamp.simpleperf.data"
+    val timestamp =
+      java.text
+        .SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", java.util.Locale.US)
+        .format(java.util.Date())
+    val outputPath =
+      "$outputDir/${testName}_iter${iteration.toString().padStart(3, '0')}_$timestamp.simpleperf.data"
 
-    val command = SimpleperfUtils.buildRecordCommand(
-      outputPath = outputPath,
-      supportsCpuCycles = supportsCpuCycles,
-      callGraph = callGraph,
-      targetPackage = targetPackage,
-      useRoot = isRootAvailable,
-    )
+    val command =
+      SimpleperfUtils.buildRecordCommand(
+        outputPath = outputPath,
+        supportsCpuCycles = supportsCpuCycles,
+        callGraph = callGraph,
+        targetPackage = targetPackage,
+        useRoot = isRootAvailable,
+      )
     process = shell.execute(*command.toTypedArray())
     simpleperfPid = process!!.pid()
 
@@ -54,11 +60,7 @@ internal class SimpleperfProfiler(
   }
 
   private fun startOutputLogger() {
-    Thread {
-      process?.forEachLine { line ->
-        Log.d(TAG, line)
-      }
-    }.start()
+    Thread { process?.forEachLine { line -> Log.d(TAG, line) } }.start()
   }
 
   override fun close() {
@@ -73,11 +75,12 @@ internal class SimpleperfProfiler(
       }
     }
 
-    val killCommand = if (isRootAvailable) {
-      listOf("su", "0", "kill", "-INT", simpleperfPid.toString())
-    } else {
-      listOf("kill", "-INT", simpleperfPid.toString())
-    }
+    val killCommand =
+      if (isRootAvailable) {
+        listOf("su", "0", "kill", "-INT", simpleperfPid.toString())
+      } else {
+        listOf("kill", "-INT", simpleperfPid.toString())
+      }
     val kill = shell.execute(*killCommand.toTypedArray())
     val exitCode = kill.exitCode()
     if (exitCode != 0) {
@@ -121,7 +124,6 @@ internal class SimpleperfProfiler(
     private const val TAG = "SimpleperfProfiler"
     private var iterationCounter = 0
 
-    @Synchronized
-    private fun nextIteration(): Int = iterationCounter++
+    @Synchronized private fun nextIteration(): Int = iterationCounter++
   }
 }

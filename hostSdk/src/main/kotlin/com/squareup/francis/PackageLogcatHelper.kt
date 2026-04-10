@@ -1,14 +1,14 @@
 package com.squareup.francis
 
+import com.squareup.francis.script.logging.log
 import com.squareup.francis.script.process.OutputRedirectSpec
 import com.squareup.francis.script.process.OutputTarget
 import com.squareup.francis.script.process.TeeProcess
-import com.squareup.francis.script.logging.log
-import logcat.LogPriority.VERBOSE
 import java.io.Closeable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import logcat.LogPriority.VERBOSE
 
 /**
  * Helper to capture logcat output for a package from the moment it starts.
@@ -22,7 +22,8 @@ import java.util.concurrent.TimeoutException
  * } // logcat stops automatically
  * ```
  */
-class PackageLogcatHelper private constructor(
+class PackageLogcatHelper
+private constructor(
   private val packageName: String,
   private val deviceTime: String,
   private val timeoutMs: Long,
@@ -33,12 +34,11 @@ class PackageLogcatHelper private constructor(
   private var logcatProc: TeeProcess? = null
 
   /**
-   * Wait for the package to start and begin streaming logcat.
-   * Returns the PID of the package.
+   * Wait for the package to start and begin streaming logcat. Returns the PID of the package.
    *
-   * Uses logcat to detect when AndroidJUnitRunner logs its onCreate message,
-   * which reliably indicates the instrumentation process has started.
-   * This is more reliable than pidof which can find stale PIDs.
+   * Uses logcat to detect when AndroidJUnitRunner logs its onCreate message, which reliably
+   * indicates the instrumentation process has started. This is more reliable than pidof which can
+   * find stale PIDs.
    */
   fun awaitPidAndStartLogcat(): Long {
     val pid = awaitInstrumentationPid()
@@ -52,32 +52,34 @@ class PackageLogcatHelper private constructor(
 
   private fun awaitInstrumentationPid(): Long {
     log(VERBOSE) { "Starting logcat watcher for AndroidJUnitRunner" }
-    val watcher = adb.cmdStart("logcat", "-T", "1", "-s", "AndroidJUnitRunner:*") {
-      stdoutRedirect = OutputRedirectSpec.CAPTURE
-      stderrRedirect = OutputRedirectSpec.DISCARD
-    }
+    val watcher =
+      adb.cmdStart("logcat", "-T", "1", "-s", "AndroidJUnitRunner:*") {
+        stdoutRedirect = OutputRedirectSpec.CAPTURE
+        stderrRedirect = OutputRedirectSpec.DISCARD
+      }
 
     val pidFuture = CompletableFuture<Long>()
 
-    val readerThread = Thread {
-      try {
-        val reader = watcher.stdoutReader
-        while (!Thread.currentThread().isInterrupted) {
-          val line = reader.readLine() ?: break
-          val parsed = parseLogcatLine(line) ?: continue
+    val readerThread =
+      Thread {
+          try {
+            val reader = watcher.stdoutReader
+            while (!Thread.currentThread().isInterrupted) {
+              val line = reader.readLine() ?: break
+              val parsed = parseLogcatLine(line) ?: continue
 
-          if (parsed.tag == "AndroidJUnitRunner" && parsed.message.startsWith("onCreate")) {
-            log(VERBOSE) { "Found AndroidJUnitRunner onCreate: $line" }
-            pidFuture.complete(parsed.pid.toLong())
-            return@Thread
-          }
+              if (parsed.tag == "AndroidJUnitRunner" && parsed.message.startsWith("onCreate")) {
+                log(VERBOSE) { "Found AndroidJUnitRunner onCreate: $line" }
+                pidFuture.complete(parsed.pid.toLong())
+                return@Thread
+              }
+            }
+          } catch (_: Exception) {}
         }
-      } catch (_: Exception) {
-      }
-    }.also {
-      it.isDaemon = true
-      it.start()
-    }
+        .also {
+          it.isDaemon = true
+          it.start()
+        }
 
     try {
       return pidFuture.get(timeoutMs, TimeUnit.MILLISECONDS)
@@ -101,13 +103,15 @@ class PackageLogcatHelper private constructor(
      *
      * @param packageName The package to monitor
      * @param timeoutMs How long to wait for the package to start (default 5 seconds)
-     * @param stdout Where to send logcat output (default: PackageLogcatParser that formats lines to match existing logging)
+     * @param stdout Where to send logcat output (default: PackageLogcatParser that formats lines to
+     *   match existing logging)
      * @param filterSpecs Logcat filter specifications (default: "UiDevice:i", "*:v")
      */
     fun create(
       packageName: String,
       timeoutMs: Long = 30000,
-      stdout: OutputRedirectSpec = OutputRedirectSpec(listOf(OutputTarget.ToStream(PackageLogcatParser()))),
+      stdout: OutputRedirectSpec =
+        OutputRedirectSpec(listOf(OutputTarget.ToStream(PackageLogcatParser()))),
       filterSpecs: List<String> = listOf("UiDevice:i", "*:v"),
     ): PackageLogcatHelper {
       val deviceTime = adb.shellStdout("date", "+%Y-%m-%d %H:%M:%S.%3N")

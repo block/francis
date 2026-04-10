@@ -4,15 +4,16 @@ import java.io.File
 import kotlin.system.exitProcess
 
 enum class Steps(val stepName: String) {
-    PROMPT("prompt") {
-        override fun run() {
-            val releaseVersion = ctx.deriveReleaseVersion()
-            val derivedPostReleaseVersion = ctx.derivePostReleaseVersion()
-            val releaseBranch = "release/$releaseVersion"
-            val releaseTag = "v$releaseVersion"
+  PROMPT("prompt") {
+    override fun run() {
+      val releaseVersion = ctx.deriveReleaseVersion()
+      val derivedPostReleaseVersion = ctx.derivePostReleaseVersion()
+      val releaseBranch = "release/$releaseVersion"
+      val releaseTag = "v$releaseVersion"
 
-            if (ctx.activeDir.exists()) {
-                error("""
+      if (ctx.activeDir.exists()) {
+        error(
+          """
                     |A release is already in progress (releases/active exists).
                     |
                     |To continue the existing release, run:
@@ -24,209 +25,250 @@ enum class Steps(val stepName: String) {
                     |You may also need to clean up git artifacts (if they were created):
                     |  git checkout main && git branch -D $releaseBranch && git push origin --delete $releaseBranch
                     |  git tag -d $releaseTag && git push origin --delete $releaseTag
-                """.trimMargin())
-            }
+                """
+            .trimMargin()
+        )
+      }
 
-            println()
-            println("═══════════════════════════════════════════════════════════════")
-            println("                    Francis Release Process                     ")
-            println("═══════════════════════════════════════════════════════════════")
-            println()
-            println("  Current version:      ${ctx.currentVersion}")
-            println("  Release version:      $releaseVersion")
-            println("  Post-release version: $derivedPostReleaseVersion")
-            println()
-            println("  This will:")
-            println("    • Create release branch: $releaseBranch")
-            println("    • Tag the release as: $releaseTag")
-            println("    • Publish to Maven Central")
-            println("    • Create GitHub release")
-            println("    • Update Homebrew formula from the release workflow")
-            println("    • Merge to main and bump version")
-            println()
-            println("To abandon this release later, run:")
-            println("  rm -r releases/active")
-            println("  git checkout main && git branch -D $releaseBranch && git push origin --delete $releaseBranch")
-            println("  git tag -d $releaseTag && git push origin --delete $releaseTag")
-            println()
+      println()
+      println("═══════════════════════════════════════════════════════════════")
+      println("                    Francis Release Process                     ")
+      println("═══════════════════════════════════════════════════════════════")
+      println()
+      println("  Current version:      ${ctx.currentVersion}")
+      println("  Release version:      $releaseVersion")
+      println("  Post-release version: $derivedPostReleaseVersion")
+      println()
+      println("  This will:")
+      println("    • Create release branch: $releaseBranch")
+      println("    • Tag the release as: $releaseTag")
+      println("    • Publish to Maven Central")
+      println("    • Create GitHub release")
+      println("    • Update Homebrew formula from the release workflow")
+      println("    • Merge to main and bump version")
+      println()
+      println("To abandon this release later, run:")
+      println("  rm -r releases/active")
+      println(
+        "  git checkout main && git branch -D $releaseBranch && git push origin --delete $releaseBranch"
+      )
+      println("  git tag -d $releaseTag && git push origin --delete $releaseTag")
+      println()
 
-            print("Do you want to proceed with this release? (yes/no): ")
-            System.out.flush()
-            val response = readLine()?.trim()?.lowercase()
-            if (response != "yes") {
-                println("Release cancelled.")
-                exitProcess(1)
-            }
+      print("Do you want to proceed with this release? (yes/no): ")
+      System.out.flush()
+      val response = readLine()?.trim()?.lowercase()
+      if (response != "yes") {
+        println("Release cancelled.")
+        exitProcess(1)
+      }
 
-            ctx.persistReleaseVersion()
+      ctx.persistReleaseVersion()
+    }
+  },
+  CREATE_BRANCH("create-branch") {
+    override fun run() {
+      ensureCleanGitRepo()
+      val persistedReleaseVersion =
+        requireNotNull(ctx.persistedReleaseVersion) {
+          "No persisted release version found. Run the prompt step first."
         }
-    },
 
-    CREATE_BRANCH("create-branch") {
-        override fun run() {
-            ensureCleanGitRepo()
-            val persistedReleaseVersion = requireNotNull(ctx.persistedReleaseVersion) {
-                "No persisted release version found. Run the prompt step first."
-            }
+      val branch = ctx.currentBranch()
+      require(branch == "main") { "Must run from main branch (currently on '$branch')" }
+      require(ctx.currentVersion.endsWith("-SNAPSHOT")) {
+        "Current version must end in -SNAPSHOT (was '${ctx.currentVersion}')"
+      }
+      require(persistedReleaseVersion == ctx.deriveReleaseVersion()) {
+        "Persisted release version '$persistedReleaseVersion' does not match current version '${ctx.currentVersion}'"
+      }
 
-            val branch = ctx.currentBranch()
-            require(branch == "main") { "Must run from main branch (currently on '$branch')" }
-            require(ctx.currentVersion.endsWith("-SNAPSHOT")) {
-                "Current version must end in -SNAPSHOT (was '${ctx.currentVersion}')"
-            }
-            require(persistedReleaseVersion == ctx.deriveReleaseVersion()) {
-                "Persisted release version '$persistedReleaseVersion' does not match current version '${ctx.currentVersion}'"
-            }
+      println("Creating release branch: ${ctx.releaseBranch}")
+      check(ctx.runCommand(listOf("git", "checkout", "-b", ctx.releaseBranch)))
 
-            println("Creating release branch: ${ctx.releaseBranch}")
-            check(ctx.runCommand(listOf("git", "checkout", "-b", ctx.releaseBranch)))
+      println("Updating version to $persistedReleaseVersion")
+      ctx.writeGradlePropertiesVersion(persistedReleaseVersion)
 
-            println("Updating version to $persistedReleaseVersion")
-            ctx.writeGradlePropertiesVersion(persistedReleaseVersion)
-
-            check(ctx.runCommand(listOf("git", "add", "gradle.properties")))
-            check(ctx.runCommand(listOf("git", "commit", "-m", "Prepare $persistedReleaseVersion release")))
-            check(ctx.runCommand(listOf("git", "push", "--set-upstream", "origin", ctx.releaseBranch)))
+      check(ctx.runCommand(listOf("git", "add", "gradle.properties")))
+      check(
+        ctx.runCommand(listOf("git", "commit", "-m", "Prepare $persistedReleaseVersion release"))
+      )
+      check(ctx.runCommand(listOf("git", "push", "--set-upstream", "origin", ctx.releaseBranch)))
+    }
+  },
+  TAG_RELEASE("tag-release") {
+    override fun run() {
+      val persistedReleaseVersion =
+        requireNotNull(ctx.persistedReleaseVersion) {
+          "No persisted release version found in releases/active/version"
         }
-    },
-
-    TAG_RELEASE("tag-release") {
-        override fun run() {
-            val persistedReleaseVersion = requireNotNull(ctx.persistedReleaseVersion) {
-                "No persisted release version found in releases/active/version"
-            }
-            println("Tagging release as ${ctx.releaseTag}")
-            check(ctx.runCommand(listOf("git", "tag", "-a", ctx.releaseTag, "-m", "Release $persistedReleaseVersion")))
-            check(ctx.runCommand(listOf("git", "push", "origin", ctx.releaseTag)))
+      println("Tagging release as ${ctx.releaseTag}")
+      check(
+        ctx.runCommand(
+          listOf("git", "tag", "-a", ctx.releaseTag, "-m", "Release $persistedReleaseVersion")
+        )
+      )
+      check(ctx.runCommand(listOf("git", "push", "origin", ctx.releaseTag)))
+    }
+  },
+  WAIT_RELEASE("wait-release") {
+    override fun run() {
+      val persistedReleaseVersion =
+        requireNotNull(ctx.persistedReleaseVersion) {
+          "No persisted release version found in releases/active/version"
         }
-    },
+      println("Waiting for release workflow to complete...")
 
-    WAIT_RELEASE("wait-release") {
-        override fun run() {
-            val persistedReleaseVersion = requireNotNull(ctx.persistedReleaseVersion) {
-                "No persisted release version found in releases/active/version"
-            }
-            println("Waiting for release workflow to complete...")
+      waitForWorkflow("release", tag = ctx.releaseTag, commit = ctx.headSha())
 
-            waitForWorkflow("release", tag = ctx.releaseTag, commit = ctx.headSha())
+      println()
+      println("GitHub release workflow completed:")
+      println(
+        "  GitHub Release:        https://github.com/block/francis/releases/tag/${ctx.releaseTag}"
+      )
+      println(
+        "  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/$persistedReleaseVersion"
+      )
+      println(
+        "  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/$persistedReleaseVersion"
+      )
+      println(
+        "  Homebrew Workflow:     https://github.com/block/homebrew-tap/actions/workflows/bump-formula.yaml?query=event%3Aworkflow_dispatch"
+      )
+      println(
+        "  Homebrew PRs:          https://github.com/block/homebrew-tap/pulls?q=is%3Apr+base%3Amain+head%3Abump-francis-to-$persistedReleaseVersion"
+      )
+      println()
+      println("Note: Maven Central artifacts may take up to 30 minutes to become available.")
+    }
+  },
+  MERGE_MAIN("merge-main") {
+    override fun run() {
+      println("Merging ${ctx.releaseBranch} into main...")
+      check(ctx.runCommand(listOf("git", "checkout", "main")))
+      check(ctx.runCommand(listOf("git", "merge", "--ff-only", ctx.releaseBranch)))
+    }
+  },
+  BUMP_SNAPSHOT("bump-snapshot") {
+    override fun run() {
+      println("Bumping version to ${ctx.persistedPostReleaseVersion}")
+      ctx.writeGradlePropertiesVersion(ctx.persistedPostReleaseVersion)
 
-            println()
-            println("GitHub release workflow completed:")
-            println("  GitHub Release:        https://github.com/block/francis/releases/tag/${ctx.releaseTag}")
-            println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/$persistedReleaseVersion")
-            println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/$persistedReleaseVersion")
-            println("  Homebrew Workflow:     https://github.com/block/homebrew-tap/actions/workflows/bump-formula.yaml?query=event%3Aworkflow_dispatch")
-            println("  Homebrew PRs:          https://github.com/block/homebrew-tap/pulls?q=is%3Apr+base%3Amain+head%3Abump-francis-to-$persistedReleaseVersion")
-            println()
-            println("Note: Maven Central artifacts may take up to 30 minutes to become available.")
-        }
-    },
+      check(ctx.runCommand(listOf("git", "add", "gradle.properties")))
+      check(
+        ctx.runCommand(
+          listOf("git", "commit", "-m", "Start ${ctx.persistedPostReleaseVersion} development")
+        )
+      )
+      check(ctx.runCommand(listOf("git", "push", "origin", "main")))
+      println()
+      println("═══════════════════════════════════════════════════════════════")
+      println("          Release ${ctx.persistedReleaseVersion} completed successfully!          ")
+      println("═══════════════════════════════════════════════════════════════")
+      println()
+      println("All release artifacts:")
+      println(
+        "  GitHub Release:        https://github.com/block/francis/releases/tag/${ctx.releaseTag}"
+      )
+      println(
+        "  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/${ctx.persistedReleaseVersion}"
+      )
+      println(
+        "  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/${ctx.persistedReleaseVersion}"
+      )
+      println(
+        "  Homebrew:              https://github.com/block/homebrew-tap/blob/main/Formula/francis.rb"
+      )
+      println()
+    }
+  };
 
-    MERGE_MAIN("merge-main") {
-        override fun run() {
-            println("Merging ${ctx.releaseBranch} into main...")
-            check(ctx.runCommand(listOf("git", "checkout", "main")))
-            check(ctx.runCommand(listOf("git", "merge", "--ff-only", ctx.releaseBranch)))
-        }
-    },
+  abstract fun run()
 
-    BUMP_SNAPSHOT("bump-snapshot") {
-        override fun run() {
-            println("Bumping version to ${ctx.persistedPostReleaseVersion}")
-            ctx.writeGradlePropertiesVersion(ctx.persistedPostReleaseVersion)
+  val markerFile: File by lazy {
+    val prefix = "%02d".format(ordinal + 1)
+    ctx.stepsDir.resolve("$prefix-$stepName")
+  }
 
-            check(ctx.runCommand(listOf("git", "add", "gradle.properties")))
-            check(ctx.runCommand(listOf("git", "commit", "-m", "Start ${ctx.persistedPostReleaseVersion} development")))
-            check(ctx.runCommand(listOf("git", "push", "origin", "main")))
-            println()
-            println("═══════════════════════════════════════════════════════════════")
-            println("          Release ${ctx.persistedReleaseVersion} completed successfully!          ")
-            println("═══════════════════════════════════════════════════════════════")
-            println()
-            println("All release artifacts:")
-            println("  GitHub Release:        https://github.com/block/francis/releases/tag/${ctx.releaseTag}")
-            println("  Maven Central (host):  https://central.sonatype.com/artifact/com.squareup.francis/host-sdk/${ctx.persistedReleaseVersion}")
-            println("  Maven Central (inst):  https://central.sonatype.com/artifact/com.squareup.francis/instrumentation-sdk/${ctx.persistedReleaseVersion}")
-            println("  Homebrew:              https://github.com/block/homebrew-tap/blob/main/Formula/francis.rb")
-            println()
-        }
-    };
-
-    abstract fun run()
-
-    val markerFile: File by lazy {
-        val prefix = "%02d".format(ordinal + 1)
-        ctx.stepsDir.resolve("$prefix-$stepName")
+  fun execute() {
+    // Check if this step has already been completed
+    if (markerFile.exists()) {
+      println("Skipping already completed step: $stepName")
+      return
     }
 
-    fun execute() {
-        // Check if this step has already been completed
-        if (markerFile.exists()) {
-            println("Skipping already completed step: $stepName")
-            return
-        }
+    println("Running step: $stepName")
+    run()
 
-        println("Running step: $stepName")
-        run()
+    // Mark this step as completed
+    ctx.stepsDir.mkdirs()
+    markerFile.writeText("done\n")
+    println("✓ Step complete: $stepName")
+  }
 
-        // Mark this step as completed
-        ctx.stepsDir.mkdirs()
-        markerFile.writeText("done\n")
-        println("✓ Step complete: $stepName")
-    }
-
-    companion object {
-        fun findByName(name: String): Steps? = entries.find { it.stepName == name }
-    }
+  companion object {
+    fun findByName(name: String): Steps? = entries.find { it.stepName == name }
+  }
 }
 
 // Helper functions
 
 private fun ensureCleanGitRepo() {
-    val status = ctx.runCommandOutput(listOf("git", "status", "--porcelain")).trim()
-    if (status.isNotEmpty()) {
-        System.err.println(status)
-        error("Git repository has uncommitted changes")
-    }
+  val status = ctx.runCommandOutput(listOf("git", "status", "--porcelain")).trim()
+  if (status.isNotEmpty()) {
+    System.err.println(status)
+    error("Git repository has uncommitted changes")
+  }
 }
 
-private fun waitForWorkflow(workflow: String, tag: String, commit: String, timeoutMinutes: Int = 30) {
-    // Wait a moment for workflow to be registered
-    Thread.sleep(5_000)
+private fun waitForWorkflow(
+  workflow: String,
+  tag: String,
+  commit: String,
+  timeoutMinutes: Int = 30,
+) {
+  // Wait a moment for workflow to be registered
+  Thread.sleep(5_000)
 
-    // Find the run ID for this tag and commit
-    var runId: String? = null
-    repeat(10) {
-        val result = ctx.runCommandOutput(listOf(
-            "gh", "run", "list",
+  // Find the run ID for this tag and commit
+  var runId: String? = null
+  repeat(10) {
+    val result =
+      ctx
+        .runCommandOutput(
+          listOf(
+            "gh",
+            "run",
+            "list",
             "--workflow=$workflow.yaml",
             "--branch=$tag",
             "--commit=$commit",
             "--repo=block/francis",
-            "--json", "databaseId",
-            "--jq", ".[0].databaseId"
-        )).trim()
-        if (result.isNotEmpty() && result != "null") {
-            runId = result
-            return@repeat
-        }
-        println("  Waiting for $workflow workflow to start...")
-        Thread.sleep(10_000)
+            "--json",
+            "databaseId",
+            "--jq",
+            ".[0].databaseId",
+          )
+        )
+        .trim()
+    if (result.isNotEmpty() && result != "null") {
+      runId = result
+      return@repeat
     }
+    println("  Waiting for $workflow workflow to start...")
+    Thread.sleep(10_000)
+  }
 
-    requireNotNull(runId) { "Could not find workflow run for $workflow on tag $tag commit $commit" }
+  requireNotNull(runId) { "Could not find workflow run for $workflow on tag $tag commit $commit" }
 
-    // Use 'gh run watch' to stream status (avoids rate limiting from repeated API calls)
-    println("Watching workflow run $runId...")
-    val success = ctx.runCommand(listOf(
-        "gh", "run", "watch", runId!!,
-        "--repo=block/francis",
-        "--exit-status"
-    ))
+  // Use 'gh run watch' to stream status (avoids rate limiting from repeated API calls)
+  println("Watching workflow run $runId...")
+  val success =
+    ctx.runCommand(listOf("gh", "run", "watch", runId!!, "--repo=block/francis", "--exit-status"))
 
-    if (success) {
-        println("✓ Workflow '$workflow' completed successfully!")
-    } else {
-        error("Workflow '$workflow' failed!")
-    }
+  if (success) {
+    println("✓ Workflow '$workflow' completed successfully!")
+  } else {
+    error("Workflow '$workflow' failed!")
+  }
 }

@@ -7,7 +7,8 @@ class LogcatLineTest {
 
   @Test
   fun parseLogcatLine_validLine_parsesProperly() {
-    val line = "01-13 03:00:25.346   603   762 W IPCThreadState: Sending oneway calls to frozen process."
+    val line =
+      "01-13 03:00:25.346   603   762 W IPCThreadState: Sending oneway calls to frozen process."
 
     val result = parseLogcatLine(line)
 

@@ -1,15 +1,13 @@
 package com.squareup.francis.script.logging
 
 import com.google.common.truth.Truth.assertThat
+import java.io.File
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.File
 
 class RunDirectoriesTest {
-  @JvmField
-  @Rule
-  val tempFolder = TemporaryFolder()
+  @JvmField @Rule val tempFolder = TemporaryFolder()
 
   @Test
   fun nextNumberedRunDir_startsAtZero_whenEmpty() {

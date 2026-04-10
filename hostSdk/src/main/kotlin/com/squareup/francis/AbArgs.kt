@@ -6,6 +6,7 @@ data class AbArgs(
   val treatmentOnly: List<String>,
 ) {
   fun baselineArgs(): List<String> = shared + baselineOnly
+
   fun treatmentArgs(): List<String> = shared + treatmentOnly
 }
 

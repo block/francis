@@ -1,14 +1,14 @@
 package com.squareup.francis.script.logging
 
-import logcat.LogPriority
-import logcat.LogcatLogger
-import logcat.logcat
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
 import java.io.PrintStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import logcat.LogPriority
+import logcat.LogcatLogger
+import logcat.logcat
 
 val LogPriority.prefix: String
   get() = name.first().toString()
@@ -45,11 +45,7 @@ class FrancisLogger(
 
   override fun log(priority: LogPriority, tag: String, message: String) {
     val logFileOnly = priority.priorityInt < minLogPriority.priorityInt
-    println(
-      message,
-      formatter = priorityFormatter(priority),
-      logFileOnly = logFileOnly
-    )
+    println(message, formatter = priorityFormatter(priority), logFileOnly = logFileOnly)
   }
 }
 
@@ -72,38 +68,39 @@ private val stderrFormatter: (String) -> String = { message ->
   "[$timestamp stderr] $message"
 }
 
-private val stdoutFormatter: (String) -> String = if (System.console() != null) {
-  { message ->
-    val timestamp = LocalDateTime.now().format(timeFormatter)
-    "[$timestamp stdout] $message"
+private val stdoutFormatter: (String) -> String =
+  if (System.console() != null) {
+    { message ->
+      val timestamp = LocalDateTime.now().format(timeFormatter)
+      "[$timestamp stdout] $message"
+    }
+  } else {
+    { message -> message }
   }
-} else {
-  { message -> message }
-}
 
-private val stderrLogger = FrancisLogger(
-  wrapped = System.err,
-  defaultFormatter = stderrFormatter,
-  minLogPriority = LogPriority.INFO,
-  logPath = null,
-  logFileStream = nullLogFileStream,
-)
+private val stderrLogger =
+  FrancisLogger(
+    wrapped = System.err,
+    defaultFormatter = stderrFormatter,
+    minLogPriority = LogPriority.INFO,
+    logPath = null,
+    logFileStream = nullLogFileStream,
+  )
 
 private var activeStdErrLogger: FrancisLogger = stderrLogger
 
-private var activeStdOutLogger: FrancisLogger = FrancisLogger(
-  wrapped = System.out,
-  defaultFormatter = stdoutFormatter,
-  minLogPriority = LogPriority.INFO,
-  logPath = null,
-  logFileStream = nullLogFileStream,
-)
+private var activeStdOutLogger: FrancisLogger =
+  FrancisLogger(
+    wrapped = System.out,
+    defaultFormatter = stdoutFormatter,
+    minLogPriority = LogPriority.INFO,
+    logPath = null,
+    logFileStream = nullLogFileStream,
+  )
 
 // Install a bootstrap logger at class init so logcat.logcat calls don't vanish before setup.
 @Suppress("unused")
-private val bootstrapLoggingInstalled: Unit = run {
-  installLogcatLogger(activeStdErrLogger)
-}
+private val bootstrapLoggingInstalled: Unit = run { installLogcatLogger(activeStdErrLogger) }
 
 val stdOut: FrancisLogger
   get() = activeStdOutLogger
@@ -146,22 +143,24 @@ fun setupLogging(minPriority: LogPriority, logPath: String) {
 
   val configuredLogFile = File(logPath)
   val logFileStream = PrintStream(FileOutputStream(configuredLogFile), true)
-  activeStdErrLogger = FrancisLogger(
-    wrapped = System.err,
-    defaultFormatter = stderrFormatter,
-    minLogPriority = minPriority,
-    logPath = logPath,
-    logFileStream = logFileStream,
-  )
+  activeStdErrLogger =
+    FrancisLogger(
+      wrapped = System.err,
+      defaultFormatter = stderrFormatter,
+      minLogPriority = minPriority,
+      logPath = logPath,
+      logFileStream = logFileStream,
+    )
 
   logFile = configuredLogFile
-  activeStdOutLogger = FrancisLogger(
-    wrapped = System.out,
-    defaultFormatter = stdoutFormatter,
-    minLogPriority = minPriority,
-    logPath = logPath,
-    logFileStream = logFileStream,
-  )
+  activeStdOutLogger =
+    FrancisLogger(
+      wrapped = System.out,
+      defaultFormatter = stdoutFormatter,
+      minLogPriority = minPriority,
+      logPath = logPath,
+      logFileStream = logFileStream,
+    )
 
   installLogcatLogger(activeStdErrLogger)
 }
@@ -175,16 +174,10 @@ fun logFormatted(
   message: () -> String,
 ) {
   val logFileOnly = level.priorityInt < activeStdErrLogger.minLogPriority.priorityInt
-  stdErr.println(
-    message(),
-    formatter = formatter,
-    logFileOnly = logFileOnly
-  )
+  stdErr.println(message(), formatter = formatter, logFileOnly = logFileOnly)
 }
 
 const val DEFAULT_TAG = "com.squareup.francis.script"
 
-fun log(
-  priority: LogPriority = LogPriority.DEBUG,
-  message: () -> String
-) = logcat(tag = DEFAULT_TAG, priority = priority, message = message)
+fun log(priority: LogPriority = LogPriority.DEBUG, message: () -> String) =
+  logcat(tag = DEFAULT_TAG, priority = priority, message = message)

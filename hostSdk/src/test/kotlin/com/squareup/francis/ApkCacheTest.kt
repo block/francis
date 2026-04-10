@@ -1,19 +1,17 @@
 package com.squareup.francis
 
 import com.google.common.truth.Truth.assertThat
+import java.io.File
 import org.junit.BeforeClass
 import org.junit.ClassRule
 import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.rules.TemporaryFolder
-import java.io.File
 
 @Category(DeviceRequired::class)
 class ApkCacheTest {
   companion object {
-    @JvmField
-    @ClassRule
-    val tempFolder = TemporaryFolder()
+    @JvmField @ClassRule val tempFolder = TemporaryFolder()
 
     private lateinit var cache: ApkCache
 

@@ -1,26 +1,25 @@
 package com.squareup.francis.script.process
 
 import com.google.common.truth.Truth.assertThat
+import java.io.ByteArrayOutputStream
+import java.io.File
 import org.junit.ClassRule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.ByteArrayOutputStream
-import java.io.File
 
 class TeeProcessBuilderTest {
   companion object {
-    @JvmField
-    @ClassRule
-    val tempFolder = TemporaryFolder()
+    @JvmField @ClassRule val tempFolder = TemporaryFolder()
   }
 
   // --- stdout DISCARD ---
 
   @Test
   fun stdout_discard() {
-    val process = TeeProcessBuilder("echo", "hello")
-      .apply { stdoutRedirect = OutputRedirectSpec.DISCARD }
-      .start()
+    val process =
+      TeeProcessBuilder("echo", "hello")
+        .apply { stdoutRedirect = OutputRedirectSpec.DISCARD }
+        .start()
     val exitCode = process.waitFor()
 
     assertThat(exitCode).isEqualTo(0)
@@ -28,9 +27,10 @@ class TeeProcessBuilderTest {
 
   @Test
   fun exitCode_waitsForRunningProcess() {
-    val process = TeeProcessBuilder("sh", "-c", "sleep 0.1")
-      .apply { stdoutRedirect = OutputRedirectSpec.DISCARD }
-      .start()
+    val process =
+      TeeProcessBuilder("sh", "-c", "sleep 0.1")
+        .apply { stdoutRedirect = OutputRedirectSpec.DISCARD }
+        .start()
 
     assertThat(process.exitCode).isEqualTo(0)
   }
@@ -39,9 +39,10 @@ class TeeProcessBuilderTest {
 
   @Test
   fun stdout_pipe_buffersOutput() {
-    val process = TeeProcessBuilder("echo", "hello world")
-      .apply { stdoutRedirect = OutputRedirectSpec.CAPTURE }
-      .start()
+    val process =
+      TeeProcessBuilder("echo", "hello world")
+        .apply { stdoutRedirect = OutputRedirectSpec.CAPTURE }
+        .start()
     process.waitFor()
 
     val output = process.stdoutStream.bufferedReader().readText()
@@ -52,9 +53,10 @@ class TeeProcessBuilderTest {
 
   @Test
   fun stdout_inherit() {
-    val process = TeeProcessBuilder("echo", "hello")
-      .apply { stdoutRedirect = OutputRedirectSpec.INHERIT }
-      .start()
+    val process =
+      TeeProcessBuilder("echo", "hello")
+        .apply { stdoutRedirect = OutputRedirectSpec.INHERIT }
+        .start()
     val exitCode = process.waitFor()
 
     assertThat(exitCode).isEqualTo(0)
@@ -65,9 +67,10 @@ class TeeProcessBuilderTest {
   @Test
   fun stdout_toFile_writesToFile() {
     val output = File(tempFolder.root, "stdout_write.txt")
-    val process = TeeProcessBuilder("echo", "file output")
-      .apply { stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.ToFile(output))) }
-      .start()
+    val process =
+      TeeProcessBuilder("echo", "file output")
+        .apply { stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.ToFile(output))) }
+        .start()
     process.waitFor()
 
     assertThat(output.readText()).isEqualTo("file output\n")
@@ -78,9 +81,12 @@ class TeeProcessBuilderTest {
     val output = File(tempFolder.root, "stdout_append.txt")
     output.writeText("existing\n")
 
-    val process = TeeProcessBuilder("echo", "appended")
-      .apply { stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.ToFile(output, append = true))) }
-      .start()
+    val process =
+      TeeProcessBuilder("echo", "appended")
+        .apply {
+          stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.ToFile(output, append = true)))
+        }
+        .start()
     process.waitFor()
 
     assertThat(output.readText()).isEqualTo("existing\nappended\n")
@@ -91,9 +97,10 @@ class TeeProcessBuilderTest {
   @Test
   fun stdout_toStream() {
     val baos = ByteArrayOutputStream()
-    val process = TeeProcessBuilder("echo", "to stream")
-      .apply { stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.ToStream(baos))) }
-      .start()
+    val process =
+      TeeProcessBuilder("echo", "to stream")
+        .apply { stdoutRedirect = OutputRedirectSpec(listOf(OutputTarget.ToStream(baos))) }
+        .start()
     process.waitFor()
 
     assertThat(baos.toString()).isEqualTo("to stream\n")
@@ -104,14 +111,13 @@ class TeeProcessBuilderTest {
   @Test
   fun stdout_tee_pipeAndStream() {
     val baos = ByteArrayOutputStream()
-    val process = TeeProcessBuilder("echo", "teed output")
-      .apply {
-        stdoutRedirect = OutputRedirectSpec(listOf(
-          OutputTarget.Capture,
-          OutputTarget.ToStream(baos)
-        ))
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("echo", "teed output")
+        .apply {
+          stdoutRedirect =
+            OutputRedirectSpec(listOf(OutputTarget.Capture, OutputTarget.ToStream(baos)))
+        }
+        .start()
     process.waitFor()
 
     val pipeOutput = process.stdoutStream.bufferedReader().readText()
@@ -122,14 +128,13 @@ class TeeProcessBuilderTest {
   @Test
   fun stdout_tee_pipeAndFile() {
     val output = File(tempFolder.root, "stdout_tee.txt")
-    val process = TeeProcessBuilder("echo", "teed to file")
-      .apply {
-        stdoutRedirect = OutputRedirectSpec(listOf(
-          OutputTarget.Capture,
-          OutputTarget.ToFile(output)
-        ))
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("echo", "teed to file")
+        .apply {
+          stdoutRedirect =
+            OutputRedirectSpec(listOf(OutputTarget.Capture, OutputTarget.ToFile(output)))
+        }
+        .start()
     process.waitFor()
 
     val pipeOutput = process.stdoutStream.bufferedReader().readText()
@@ -141,9 +146,10 @@ class TeeProcessBuilderTest {
 
   @Test
   fun stderr_pipe_buffersError() {
-    val process = TeeProcessBuilder("sh", "-c", "echo error >&2")
-      .apply { stderrRedirect = OutputRedirectSpec.CAPTURE }
-      .start()
+    val process =
+      TeeProcessBuilder("sh", "-c", "echo error >&2")
+        .apply { stderrRedirect = OutputRedirectSpec.CAPTURE }
+        .start()
     process.waitFor()
 
     val error = process.stderrStream.bufferedReader().readText()
@@ -155,14 +161,13 @@ class TeeProcessBuilderTest {
   @Test
   fun stderr_tee_pipeAndStream() {
     val baos = ByteArrayOutputStream()
-    val process = TeeProcessBuilder("sh", "-c", "echo error >&2")
-      .apply {
-        stderrRedirect = OutputRedirectSpec(listOf(
-          OutputTarget.Capture,
-          OutputTarget.ToStream(baos)
-        ))
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("sh", "-c", "echo error >&2")
+        .apply {
+          stderrRedirect =
+            OutputRedirectSpec(listOf(OutputTarget.Capture, OutputTarget.ToStream(baos)))
+        }
+        .start()
     process.waitFor()
 
     val pipeError = process.stderrStream.bufferedReader().readText()
@@ -172,22 +177,26 @@ class TeeProcessBuilderTest {
 
   @Test
   fun checkExitCode_doesNotConsumePipedStreamsOnFailure() {
-    val process = TeeProcessBuilder("sh", "-c", "echo out; echo err >&2; exit 12")
-      .apply {
-        stdoutRedirect = OutputRedirectSpec.CAPTURE
-        stderrRedirect = OutputRedirectSpec.CAPTURE
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("sh", "-c", "echo out; echo err >&2; exit 12")
+        .apply {
+          stdoutRedirect = OutputRedirectSpec.CAPTURE
+          stderrRedirect = OutputRedirectSpec.CAPTURE
+        }
+        .start()
 
-    val exception = try {
-      process.checkExitCode()
-      throw AssertionError("Expected FailedExecException")
-    } catch (e: FailedExecException) {
-      e
-    }
+    val exception =
+      try {
+        process.checkExitCode()
+        throw AssertionError("Expected FailedExecException")
+      } catch (e: FailedExecException) {
+        e
+      }
 
     assertThat(exception.exitCode).isEqualTo(12)
-    assertThat(exception.commandLine).containsExactly("sh", "-c", "echo out; echo err >&2; exit 12").inOrder()
+    assertThat(exception.commandLine)
+      .containsExactly("sh", "-c", "echo out; echo err >&2; exit 12")
+      .inOrder()
     assertThat(exception.stdoutText).isEqualTo("out\n")
     assertThat(exception.stderrText).isEqualTo("err\n")
     assertThat(exception.stdout?.openStream()?.bufferedReader()?.readText()).isEqualTo("out\n")
@@ -202,12 +211,13 @@ class TeeProcessBuilderTest {
 
   @Test
   fun stdin_null() {
-    val process = TeeProcessBuilder("cat")
-      .apply {
-        stdinRedirect = InputRedirectSpec.NULL
-        stdoutRedirect = OutputRedirectSpec.CAPTURE
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("cat")
+        .apply {
+          stdinRedirect = InputRedirectSpec.NULL
+          stdoutRedirect = OutputRedirectSpec.CAPTURE
+        }
+        .start()
     process.waitFor()
 
     val output = process.stdoutStream.bufferedReader().readText()
@@ -218,12 +228,13 @@ class TeeProcessBuilderTest {
 
   @Test
   fun stdin_pipe_sendsInput() {
-    val process = TeeProcessBuilder("cat")
-      .apply {
-        stdinRedirect = InputRedirectSpec.PIPE
-        stdoutRedirect = OutputRedirectSpec.CAPTURE
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("cat")
+        .apply {
+          stdinRedirect = InputRedirectSpec.PIPE
+          stdoutRedirect = OutputRedirectSpec.CAPTURE
+        }
+        .start()
 
     process.stdinStream.write("test input\n".toByteArray())
     process.stdinStream.close()
@@ -240,12 +251,13 @@ class TeeProcessBuilderTest {
     val input = File(tempFolder.root, "stdin.txt")
     input.writeText("from file\n")
 
-    val process = TeeProcessBuilder("cat")
-      .apply {
-        stdinRedirect = InputRedirectSpec(InputSource.FromFile(input))
-        stdoutRedirect = OutputRedirectSpec.CAPTURE
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("cat")
+        .apply {
+          stdinRedirect = InputRedirectSpec(InputSource.FromFile(input))
+          stdoutRedirect = OutputRedirectSpec.CAPTURE
+        }
+        .start()
     process.waitFor()
 
     val output = process.stdoutStream.bufferedReader().readText()
@@ -257,15 +269,17 @@ class TeeProcessBuilderTest {
   @Test
   fun stdin_pipe_withTee() {
     val teeCapture = ByteArrayOutputStream()
-    val process = TeeProcessBuilder("cat")
-      .apply {
-        stdinRedirect = InputRedirectSpec(
-          source = InputSource.Pipe,
-          teeOutputs = listOf(OutputTarget.ToStream(teeCapture))
-        )
-        stdoutRedirect = OutputRedirectSpec.CAPTURE
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("cat")
+        .apply {
+          stdinRedirect =
+            InputRedirectSpec(
+              source = InputSource.Pipe,
+              teeOutputs = listOf(OutputTarget.ToStream(teeCapture)),
+            )
+          stdoutRedirect = OutputRedirectSpec.CAPTURE
+        }
+        .start()
 
     process.stdinStream.write("teed input\n".toByteArray())
     process.stdinStream.close()
@@ -282,15 +296,17 @@ class TeeProcessBuilderTest {
     input.writeText("file input\n")
     val teeCapture = ByteArrayOutputStream()
 
-    val process = TeeProcessBuilder("cat")
-      .apply {
-        stdinRedirect = InputRedirectSpec(
-          source = InputSource.FromFile(input),
-          teeOutputs = listOf(OutputTarget.ToStream(teeCapture))
-        )
-        stdoutRedirect = OutputRedirectSpec.CAPTURE
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("cat")
+        .apply {
+          stdinRedirect =
+            InputRedirectSpec(
+              source = InputSource.FromFile(input),
+              teeOutputs = listOf(OutputTarget.ToStream(teeCapture)),
+            )
+          stdoutRedirect = OutputRedirectSpec.CAPTURE
+        }
+        .start()
     process.waitFor()
 
     val output = process.stdoutStream.bufferedReader().readText()
@@ -302,9 +318,10 @@ class TeeProcessBuilderTest {
 
   @Test
   fun stdout_incompleteLinePreservesBytes() {
-    val process = TeeProcessBuilder("printf", "no newline")
-      .apply { stdoutRedirect = OutputRedirectSpec.CAPTURE }
-      .start()
+    val process =
+      TeeProcessBuilder("printf", "no newline")
+        .apply { stdoutRedirect = OutputRedirectSpec.CAPTURE }
+        .start()
     process.waitFor()
 
     val output = process.stdoutStream.bufferedReader().readText()
@@ -316,12 +333,13 @@ class TeeProcessBuilderTest {
   @Test
   fun directory_setsWorkingDirectory() {
     val dir = tempFolder.newFolder("workdir")
-    val process = TeeProcessBuilder("pwd")
-      .apply {
-        directory = dir
-        stdoutRedirect = OutputRedirectSpec.CAPTURE
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("pwd")
+        .apply {
+          directory = dir
+          stdoutRedirect = OutputRedirectSpec.CAPTURE
+        }
+        .start()
     process.waitFor()
 
     val output = process.stdoutStream.bufferedReader().readText().trim()
@@ -332,12 +350,13 @@ class TeeProcessBuilderTest {
 
   @Test
   fun environment_setsEnvVar() {
-    val process = TeeProcessBuilder("sh", "-c", "echo \$TEST_VAR")
-      .apply {
-        environment = mapOf("TEST_VAR" to "hello_env")
-        stdoutRedirect = OutputRedirectSpec.CAPTURE
-      }
-      .start()
+    val process =
+      TeeProcessBuilder("sh", "-c", "echo \$TEST_VAR")
+        .apply {
+          environment = mapOf("TEST_VAR" to "hello_env")
+          stdoutRedirect = OutputRedirectSpec.CAPTURE
+        }
+        .start()
     process.waitFor()
 
     val output = process.stdoutStream.bufferedReader().readText().trim()
@@ -350,10 +369,10 @@ class TeeProcessBuilderTest {
   fun stdout_inherit_withOtherTargets_throws() {
     TeeProcessBuilder("echo", "hello")
       .apply {
-        stdoutRedirect = OutputRedirectSpec(listOf(
-          OutputTarget.Inherit,
-          OutputTarget.ToStream(ByteArrayOutputStream())
-        ))
+        stdoutRedirect =
+          OutputRedirectSpec(
+            listOf(OutputTarget.Inherit, OutputTarget.ToStream(ByteArrayOutputStream()))
+          )
       }
       .start()
   }
@@ -362,10 +381,10 @@ class TeeProcessBuilderTest {
   fun stderr_inherit_withOtherTargets_throws() {
     TeeProcessBuilder("echo", "hello")
       .apply {
-        stderrRedirect = OutputRedirectSpec(listOf(
-          OutputTarget.Inherit,
-          OutputTarget.ToStream(ByteArrayOutputStream())
-        ))
+        stderrRedirect =
+          OutputRedirectSpec(
+            listOf(OutputTarget.Inherit, OutputTarget.ToStream(ByteArrayOutputStream()))
+          )
       }
       .start()
   }
@@ -374,10 +393,11 @@ class TeeProcessBuilderTest {
   fun stdin_inherit_withTeeOutputs_throws() {
     TeeProcessBuilder("cat")
       .apply {
-        stdinRedirect = InputRedirectSpec(
-          source = InputSource.Inherit,
-          teeOutputs = listOf(OutputTarget.ToStream(ByteArrayOutputStream()))
-        )
+        stdinRedirect =
+          InputRedirectSpec(
+            source = InputSource.Inherit,
+            teeOutputs = listOf(OutputTarget.ToStream(ByteArrayOutputStream())),
+          )
       }
       .start()
   }

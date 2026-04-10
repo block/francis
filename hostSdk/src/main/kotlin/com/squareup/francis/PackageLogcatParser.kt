@@ -1,8 +1,8 @@
 package com.squareup.francis
 
 import com.squareup.francis.script.logging.logFormatted
-import logcat.LogPriority
 import java.io.OutputStream
+import logcat.LogPriority
 
 class PackageLogcatParser(
   // injectable log function for easier testing
@@ -52,14 +52,17 @@ class PackageLogcatParser(
   }
 
   companion object {
-    fun logcatLevelToLogPriority(level: Char): LogPriority = when (level) {
-      'V' -> LogPriority.VERBOSE
-      'D' -> LogPriority.DEBUG
-      'I' -> LogPriority.INFO
-      'W' -> LogPriority.WARN
-      'E', 'F', 'S' -> LogPriority.ERROR
-      else -> LogPriority.DEBUG
-    }
+    fun logcatLevelToLogPriority(level: Char): LogPriority =
+      when (level) {
+        'V' -> LogPriority.VERBOSE
+        'D' -> LogPriority.DEBUG
+        'I' -> LogPriority.INFO
+        'W' -> LogPriority.WARN
+        'E',
+        'F',
+        'S' -> LogPriority.ERROR
+        else -> LogPriority.DEBUG
+      }
 
     fun formatLogcatLine(parsed: LogcatLine): String {
       return "[${parsed.time} ${parsed.level} (logcat ${parsed.pid} ${parsed.tid} ${parsed.tag})] ${parsed.message}"

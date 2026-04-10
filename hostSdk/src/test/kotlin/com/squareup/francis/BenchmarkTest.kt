@@ -2,7 +2,6 @@ package com.squareup.francis
 
 import com.google.common.truth.Truth.assertThat
 import logcat.LogPriority
-
 import org.junit.BeforeClass
 import org.junit.ClassRule
 import org.junit.Test
@@ -12,9 +11,7 @@ import org.junit.rules.TemporaryFolder
 @Category(DeviceRequired::class)
 class BenchmarkTest {
   companion object {
-    @JvmField
-    @ClassRule
-    val tempFolder = TemporaryFolder()
+    @JvmField @ClassRule val tempFolder = TemporaryFolder()
 
     private lateinit var apkCache: ApkCache
 
@@ -37,9 +34,11 @@ class BenchmarkTest {
   @Test
   fun apkCache_deviceSha256MatchesLocalSha256() {
     val apkPath = apkCache.getHostPath(testPackage)
-    val localSha256 = subproc.stdout("sha256sum", apkPath) { logPriority = LogPriority.DEBUG }
-      .split("\\s+".toRegex())
-      .first()
+    val localSha256 =
+      subproc
+        .stdout("sha256sum", apkPath) { logPriority = LogPriority.DEBUG }
+        .split("\\s+".toRegex())
+        .first()
 
     val deviceSha256 = apkCache.getDeviceSha256(testPackage)
     assertThat(deviceSha256).isEqualTo(localSha256)

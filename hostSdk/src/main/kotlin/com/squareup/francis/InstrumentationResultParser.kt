@@ -2,6 +2,7 @@ package com.squareup.francis
 
 sealed class InstrumentationResult {
   data class Success(val testsRun: Int) : InstrumentationResult()
+
   data class Failure(val message: String) : InstrumentationResult()
 }
 
@@ -26,16 +27,17 @@ object InstrumentationResultParser {
 
     // Check for test failures (FAILURES!!! marker)
     if (failuresPattern.containsMatchIn(stdout)) {
-      val summary = stdout.lines()
-        .filter { it.contains("FAILURES") || it.startsWith("Tests run:") }
-        .joinToString("\n")
+      val summary =
+        stdout
+          .lines()
+          .filter { it.contains("FAILURES") || it.startsWith("Tests run:") }
+          .joinToString("\n")
       return InstrumentationResult.Failure(summary.ifBlank { "Test failures detected" })
     }
 
     // Check for negative INSTRUMENTATION_STATUS_CODE (indicates error)
-    val statusCodes = instrumentationStatusCodePattern.findAll(stdout)
-      .map { it.groupValues[1].toInt() }
-      .toList()
+    val statusCodes =
+      instrumentationStatusCodePattern.findAll(stdout).map { it.groupValues[1].toInt() }.toList()
     if (statusCodes.any { it == -1 }) {
       return InstrumentationResult.Failure("INSTRUMENTATION_STATUS_CODE: -1 (error)")
     }

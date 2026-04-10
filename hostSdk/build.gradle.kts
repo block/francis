@@ -3,19 +3,18 @@ import com.vanniktech.maven.publish.KotlinJvm
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kotlin.serialization)
-    id("com.vanniktech.maven.publish")
-    kotlin("kapt")
+  alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.kotlin.serialization)
+  id("com.vanniktech.maven.publish")
+  kotlin("kapt")
 }
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
 val francisVersion = project.findProperty("francis.version") as String
 
-val generateVersion = tasks.register("generateVersion") {
+val generateVersion =
+  tasks.register("generateVersion") {
     val outputDir = layout.buildDirectory.dir("generated/source/version")
     val versionFile = outputDir.map { it.file("com/squareup/francis/Version.kt") }
 
@@ -25,87 +24,86 @@ val generateVersion = tasks.register("generateVersion") {
     outputs.file(versionFile)
 
     doLast {
-        versionFile.get().asFile.apply {
-            parentFile.mkdirs()
-            writeText("""
+      versionFile.get().asFile.apply {
+        parentFile.mkdirs()
+        writeText(
+          """
                 package com.squareup.francis
 
                 internal const val FRANCIS_VERSION = "$francisVersion"
-            """.trimIndent())
-        }
+            """
+            .trimIndent()
+        )
+      }
     }
-}
+  }
 
 sourceSets {
-    main {
-        java {
-            srcDir(generateVersion.map { it.outputs.files.singleFile.parentFile.parentFile.parentFile })
-        }
+  main {
+    java {
+      srcDir(generateVersion.map { it.outputs.files.singleFile.parentFile.parentFile.parentFile })
     }
+  }
 }
 
 dependencies {
-    api(project(":shared"))
-    api(project(":script"))
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.clikt)
-    implementation(libs.datumbox)
-    implementation(libs.logcat)
-    implementation(kotlin("stdlib"))
-    
-    testImplementation(libs.junit)
-    testImplementation(libs.truth)
+  api(project(":shared"))
+  api(project(":script"))
+  implementation(libs.kotlinx.serialization.json)
+  implementation(libs.clikt)
+  implementation(libs.datumbox)
+  implementation(libs.logcat)
+  implementation(kotlin("stdlib"))
+
+  testImplementation(libs.junit)
+  testImplementation(libs.truth)
 }
 
 tasks.withType<KotlinCompile> {
-    dependsOn(generateVersion)
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+  dependsOn(generateVersion)
+  kotlinOptions { jvmTarget = "17" }
 }
 
 mavenPublishing {
-    publishToMavenCentral(automaticRelease = true)
-    signAllPublications()
+  publishToMavenCentral(automaticRelease = true)
+  signAllPublications()
 
-    configure(KotlinJvm(javadocJar = JavadocJar.Empty()))
+  configure(KotlinJvm(javadocJar = JavadocJar.Empty()))
 
-    coordinates("com.squareup.francis", "host-sdk", francisVersion)
+  coordinates("com.squareup.francis", "host-sdk", francisVersion)
 
-    pom {
-        name.set("Francis Host SDK")
-        description.set("SDK for Francis Android performance testing")
-        url.set("https://github.com/block/francis")
-        licenses {
-            license {
-                name.set("Apache License 2.0")
-                url.set("https://www.apache.org/licenses/LICENSE-2.0")
-            }
-        }
-        developers {
-            developer {
-                id.set("squareup")
-                name.set("Square, Inc.")
-            }
-        }
-        scm {
-            connection.set("scm:git:git://github.com/block/francis.git")
-            developerConnection.set("scm:git:ssh://github.com/block/francis.git")
-            url.set("https://github.com/block/francis")
-        }
+  pom {
+    name.set("Francis Host SDK")
+    description.set("SDK for Francis Android performance testing")
+    url.set("https://github.com/block/francis")
+    licenses {
+      license {
+        name.set("Apache License 2.0")
+        url.set("https://www.apache.org/licenses/LICENSE-2.0")
+      }
     }
+    developers {
+      developer {
+        id.set("squareup")
+        name.set("Square, Inc.")
+      }
+    }
+    scm {
+      connection.set("scm:git:git://github.com/block/francis.git")
+      developerConnection.set("scm:git:ssh://github.com/block/francis.git")
+      url.set("https://github.com/block/francis")
+    }
+  }
 }
 
 tasks.register("printPublishingInfo") {
-    doLast {
-        println("Publishing com.squareup.francis:host-sdk:$francisVersion")
-    }
+  doLast { println("Publishing com.squareup.francis:host-sdk:$francisVersion") }
 }
 
 tasks.withType<Test> {
-    useJUnit {
-        if (project.hasProperty("excludeDeviceTests")) {
-            excludeCategories("com.squareup.francis.DeviceRequired")
-        }
+  useJUnit {
+    if (project.hasProperty("excludeDeviceTests")) {
+      excludeCategories("com.squareup.francis.DeviceRequired")
     }
+  }
 }

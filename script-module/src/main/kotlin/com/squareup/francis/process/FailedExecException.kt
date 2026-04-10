@@ -12,8 +12,11 @@ class FailedExecException(
 ) : RuntimeException() {
   val stdout: ProcessOutputCopy? by lazy { stdoutCapture?.awaitClosedOutputCopy() }
   val stderr: ProcessOutputCopy? by lazy { stderrCapture?.awaitClosedOutputCopy() }
-  val stdoutText: String? get() = stdout?.asText()
-  val stderrText: String? get() = stderr?.asText()
+  val stdoutText: String?
+    get() = stdout?.asText()
+
+  val stderrText: String?
+    get() = stderr?.asText()
 
   override val message: String by lazy {
     buildMessage(exitCode, commandLine, stdoutText, stderrText)
@@ -24,15 +27,16 @@ class FailedExecException(
       exitCode: Int,
       commandLine: List<String>,
       stdoutText: String?,
-      stderrText: String?
+      stderrText: String?,
     ): String {
       val stderrOutput = stderrText?.takeIf { it.isNotBlank() }
       val stdoutOutput = stdoutText?.takeIf { it.isNotBlank() }
       return listOfNotNull(
-        "(exit code $exitCode) ${shellEscape(commandLine)}",
-        stderrOutput?.let { "stderr:\n$it" },
-        stdoutOutput?.let { "stdout:\n$it" },
-      ).joinToString("\n")
+          "(exit code $exitCode) ${shellEscape(commandLine)}",
+          stderrOutput?.let { "stderr:\n$it" },
+          stdoutOutput?.let { "stdout:\n$it" },
+        )
+        .joinToString("\n")
     }
   }
 }

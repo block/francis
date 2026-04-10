@@ -17,10 +17,10 @@ import com.squareup.francis.script.logging.log
 import com.squareup.francis.script.process.InputRedirectSpec
 import com.squareup.francis.script.process.OutputRedirectSpec
 import com.squareup.francis.script.process.shellEscape
+import java.io.File
 import logcat.LogPriority
 import logcat.LogPriority.INFO
 import logcat.LogPriority.WARN
-import java.io.File
 
 /** Function type for executing a benchmark. Override to customize benchmark execution behavior. */
 typealias BenchmarkRunner = (BaseValues, RunnerValues) -> Unit
@@ -40,10 +40,8 @@ class FrancisEntrypoint(
 
   override fun help(context: Context) = helpText
 
-  override fun aliases() = mapOf(
-    "benchmark" to listOf("bench"),
-    "macrobenchmark" to listOf("bench"),
-  )
+  override fun aliases() =
+    mapOf("benchmark" to listOf("bench"), "macrobenchmark" to listOf("bench"))
 
   override fun run() = Unit
 }
@@ -68,9 +66,7 @@ open class BenchCommand(
 }
 
 /** A do-nothing command used to parse and resolve options without running. */
-private class ResolveCommand(
-  runnerOpts: RunnerOptions,
-) : CliktCommand(name = "resolve") {
+private class ResolveCommand(runnerOpts: RunnerOptions) : CliktCommand(name = "resolve") {
   val baseOpts by runnerOpts.base
   val runnerVals: RunnerValues by runnerOpts
 
@@ -96,7 +92,9 @@ class AbCommand(
     val argsAfterAb = if (abIdx >= 0) rawArgs.subList(abIdx + 1, rawArgs.size) else rawArgs
     preprocessAbArgs(argsAfterAb)
   }
-  override fun help(context: Context) = """
+
+  override fun help(context: Context) =
+    """
     Run an A/B benchmark comparison.
 
     Options before --baseline-options or --treatment-options are shared.
@@ -104,12 +102,11 @@ class AbCommand(
     Options after --treatment-options apply only to the treatment run.
 
     Example: $entrypointName ab --debug --baseline-options --no-aot --treatment-options --aot
-  """.trimIndent()
+  """
+      .trimIndent()
 
-  @Suppress("unused")
-  private val baseOpts by runnerOpts.base
-  @Suppress("unused")
-  private val runnerOpts by runnerOpts
+  @Suppress("unused") private val baseOpts by runnerOpts.base
+  @Suppress("unused") private val runnerOpts by runnerOpts
 
   override fun run() {
     val parsed = abArgs
@@ -129,7 +126,10 @@ class AbCommand(
     val baselineVerbosity = baselineRunnerOpts.base.verbosity
     val treatmentVerbosity = treatmentRunnerOpts.base.verbosity
     if (baselineVerbosity != treatmentVerbosity) {
-      throw PithyException(1, "Verbosity must be the same for baseline and treatment: $baselineVerbosity vs $treatmentVerbosity")
+      throw PithyException(
+        1,
+        "Verbosity must be the same for baseline and treatment: $baselineVerbosity vs $treatmentVerbosity",
+      )
     }
 
     // Run both benchmarks
@@ -152,25 +152,33 @@ class AbCommand(
 }
 
 private fun emitCompareCommands(baselineDir: File, treatmentDir: File, entrypointName: String) {
-  val baselineJsonFiles = baselineDir.walkTopDown()
-    .filter { it.isFile && it.extension == "json" }
-    .map { it.relativeTo(baselineDir).path }
-    .toSet()
+  val baselineJsonFiles =
+    baselineDir
+      .walkTopDown()
+      .filter { it.isFile && it.extension == "json" }
+      .map { it.relativeTo(baselineDir).path }
+      .toSet()
 
-  val treatmentJsonFiles = treatmentDir.walkTopDown()
-    .filter { it.isFile && it.extension == "json" }
-    .map { it.relativeTo(treatmentDir).path }
-    .toSet()
+  val treatmentJsonFiles =
+    treatmentDir
+      .walkTopDown()
+      .filter { it.isFile && it.extension == "json" }
+      .map { it.relativeTo(treatmentDir).path }
+      .toSet()
 
   val paired = baselineJsonFiles.intersect(treatmentJsonFiles)
   val baselineOnly = baselineJsonFiles - treatmentJsonFiles
   val treatmentOnly = treatmentJsonFiles - baselineJsonFiles
 
   for (relativePath in baselineOnly) {
-    log(WARN) { "Baseline-only JSON file (no treatment match): ${File(baselineDir, relativePath).absolutePath}" }
+    log(WARN) {
+      "Baseline-only JSON file (no treatment match): ${File(baselineDir, relativePath).absolutePath}"
+    }
   }
   for (relativePath in treatmentOnly) {
-    log(WARN) { "Treatment-only JSON file (no baseline match): ${File(treatmentDir, relativePath).absolutePath}" }
+    log(WARN) {
+      "Treatment-only JSON file (no baseline match): ${File(treatmentDir, relativePath).absolutePath}"
+    }
   }
 
   if (paired.isEmpty()) {
@@ -182,26 +190,32 @@ private fun emitCompareCommands(baselineDir: File, treatmentDir: File, entrypoin
   for (relativePath in paired.sorted()) {
     val baselineJson = File(baselineDir, relativePath)
     val treatmentJson = File(treatmentDir, relativePath)
-    log(INFO) { "  $entrypointName compare ${baselineJson.absolutePath} ${treatmentJson.absolutePath}" }
+    log(INFO) {
+      "  $entrypointName compare ${baselineJson.absolutePath} ${treatmentJson.absolutePath}"
+    }
   }
 }
 
 open class CompareCommand : CliktCommand(name = "compare") {
-  override fun help(context: Context) = """
+  override fun help(context: Context) =
+    """
     Compare previously collected benchmark results.
 
     Takes two benchmark JSON files and performs statistical analysis to determine
     if there is a significant performance difference between them.
-  """.trimIndent()
+    """
+      .trimIndent()
 
-  private val file1: File by argument(help = "First benchmark JSON file (baseline)")
-    .file(mustExist = true, canBeDir = false, mustBeReadable = true)
+  private val file1: File by
+    argument(help = "First benchmark JSON file (baseline)")
+      .file(mustExist = true, canBeDir = false, mustBeReadable = true)
 
-  private val file2: File by argument(help = "Second benchmark JSON file (treatment)")
-    .file(mustExist = true, canBeDir = false, mustBeReadable = true)
+  private val file2: File by
+    argument(help = "Second benchmark JSON file (treatment)")
+      .file(mustExist = true, canBeDir = false, mustBeReadable = true)
 
-  private val bootstrap: Boolean by option("-b", "--bootstrap", help = "Use bootstrapping for statistical analysis")
-    .flag()
+  private val bootstrap: Boolean by
+    option("-b", "--bootstrap", help = "Use bootstrapping for statistical analysis").flag()
 
   override fun run() {
     val analysis1 = parseBenchmarkJson(file1)
@@ -215,46 +229,59 @@ open class PerfettoCommand(
   runnerOpts: RunnerOptions,
   private val benchmarkRunner: BenchmarkRunner = DefaultBenchmarkRunner,
 ) : CliktCommand(name = "perfetto") {
-  override fun help(context: Context) = """
+  override fun help(context: Context) =
+    """
     Collect a Perfetto trace. Tracing an instrumentation symbol requires the instrumentation SDK.
-  """.trimIndent()
+    """
+      .trimIndent()
 
   protected val baseOpts by runnerOpts.base
   protected val runnerVals: RunnerValues by runnerOpts
 
-  private val perfettoConfigFile by option(
-    "--perfetto-config",
-    help = "Path to a custom Perfetto config file (text proto format). If not specified, uses the default config."
-  ).file(mustExist = true, canBeDir = false)
+  private val perfettoConfigFile by
+    option(
+        "--perfetto-config",
+        help =
+          "Path to a custom Perfetto config file (text proto format). If not specified, uses the default config.",
+      )
+      .file(mustExist = true, canBeDir = false)
 
-  protected val view by option(
-    "--view",
-    help = "Open the trace in Perfetto UI after collection. If multiple iterations, opens the first trace."
-  ).flag("--no-view", default = true)
+  protected val view by
+    option(
+        "--view",
+        help =
+          "Open the trace in Perfetto UI after collection. If multiple iterations, opens the first trace.",
+      )
+      .flag("--no-view", default = true)
 
-  private val outputFile by option(
-    "-o", "--output",
-    help = "Path to save the trace file. If not specified, trace is saved in the run directory."
-  ).file(canBeDir = false)
+  private val outputFile by
+    option(
+        "-o",
+        "--output",
+        help = "Path to save the trace file. If not specified, trace is saved in the run directory.",
+      )
+      .file(canBeDir = false)
 
   override fun run() {
     baseOpts.setup()
 
-    val traceFile = if (shouldRunManualMode()) {
-      runManualPerfetto()
-    } else {
-      runInstrumentedPerfetto()
-    }
+    val traceFile =
+      if (shouldRunManualMode()) {
+        runManualPerfetto()
+      } else {
+        runInstrumentedPerfetto()
+      }
 
     if (traceFile != null) {
-      val finalTraceFile = if (outputFile != null) {
-        outputFile!!.parentFile?.mkdirs()
-        traceFile.copyTo(outputFile!!, overwrite = true)
-        log { "Trace saved to: ${outputFile!!.absolutePath}" }
-        outputFile!!
-      } else {
-        traceFile
-      }
+      val finalTraceFile =
+        if (outputFile != null) {
+          outputFile!!.parentFile?.mkdirs()
+          traceFile.copyTo(outputFile!!, overwrite = true)
+          log { "Trace saved to: ${outputFile!!.absolutePath}" }
+          outputFile!!
+        } else {
+          traceFile
+        }
       onTraceCollected(finalTraceFile)
       if (view) {
         openTrace(finalTraceFile)
@@ -275,8 +302,10 @@ open class PerfettoCommand(
   private fun runManualPerfetto(): File? {
     val appPackage = runnerVals.appPackageOrNull
 
-    val configText = perfettoConfigFile?.readText()
-      ?: if (appPackage != null) PerfettoConfigTemplate.forPackage(appPackage) else PerfettoConfigTemplate.forAllApps()
+    val configText =
+      perfettoConfigFile?.readText()
+        ?: if (appPackage != null) PerfettoConfigTemplate.forPackage(appPackage)
+        else PerfettoConfigTemplate.forAllApps()
 
     val deviceConfigPath = "${FrancisConstants.DEVICE_FRANCIS_DIR}/perfetto-config.txt"
     val deviceTracePath = "/data/misc/perfetto-traces/francis-trace.perfetto-trace"
@@ -285,11 +314,15 @@ open class PerfettoCommand(
     val hostTraceFile = File(outputDir, "trace.perfetto-trace")
 
     // Push config to device
-    adb.shellRun("mkdir", "-p", FrancisConstants.DEVICE_FRANCIS_DIR) { logPriority = LogPriority.DEBUG }
+    adb.shellRun("mkdir", "-p", FrancisConstants.DEVICE_FRANCIS_DIR) {
+      logPriority = LogPriority.DEBUG
+    }
     val tempConfigFile = File.createTempFile("perfetto-config", ".txt")
     try {
       tempConfigFile.writeText(configText)
-      adb.cmdRun("push", tempConfigFile.absolutePath, deviceConfigPath) { logPriority = LogPriority.DEBUG }
+      adb.cmdRun("push", tempConfigFile.absolutePath, deviceConfigPath) {
+        logPriority = LogPriority.DEBUG
+      }
     } finally {
       tempConfigFile.delete()
     }
@@ -304,17 +337,19 @@ open class PerfettoCommand(
     // We use `cat config | perfetto` instead of `perfetto < config` because SELinux
     // blocks the perfetto domain from reading shell_data_file labeled files directly.
     // With cat, the shell process reads the file and pipes it to perfetto.
-    val perfettoProc = adb.cmdStart(
-      "shell", "-t",
-      "cat $deviceConfigPath | perfetto --txt -c - -o $deviceTracePath"
-    ) {
-      // We need to inherit stdin in order for CTRL+C to be handled by the inner PTY.
-      stdinRedirect = InputRedirectSpec.INHERIT
-      // We need to inherit stdout in order for `CTRL+C` to be echoed.
-      // Unfortunately that means that simpleperf logging won't be captured in
-      // our log file.
-      stdoutRedirect = OutputRedirectSpec.INHERIT
-    }
+    val perfettoProc =
+      adb.cmdStart(
+        "shell",
+        "-t",
+        "cat $deviceConfigPath | perfetto --txt -c - -o $deviceTracePath",
+      ) {
+        // We need to inherit stdin in order for CTRL+C to be handled by the inner PTY.
+        stdinRedirect = InputRedirectSpec.INHERIT
+        // We need to inherit stdout in order for `CTRL+C` to be echoed.
+        // Unfortunately that means that simpleperf logging won't be captured in
+        // our log file.
+        stdoutRedirect = OutputRedirectSpec.INHERIT
+      }
 
     log(INFO) { "Press Ctrl+C to stop tracing." }
     perfettoProc.waitFor()
@@ -333,19 +368,23 @@ open class PerfettoCommand(
 
   private fun runInstrumentedPerfetto(): File? {
     val configPath = perfettoConfigFile?.absolutePath
-    val optsWithProfiler = object : RunnerValues by runnerVals {
-      override val profiler: String = "perfetto"
-      override val perfettoConfigPath: String? = configPath
-      override val overrideIterations: Int? = runnerVals.overrideIterations ?: 1
-      override val delegate: RunnerValues get() = runnerVals
-    }
+    val optsWithProfiler =
+      object : RunnerValues by runnerVals {
+        override val profiler: String = "perfetto"
+        override val perfettoConfigPath: String? = configPath
+        override val overrideIterations: Int? = runnerVals.overrideIterations ?: 1
+        override val delegate: RunnerValues
+          get() = runnerVals
+      }
     runBenchmark(baseOpts, optsWithProfiler)
 
     val outputDir = File(optsWithProfiler.hostOutputDir)
-    val traceFile = outputDir.walkTopDown()
-      .filter { it.isFile && it.extension == "perfetto-trace" }
-      .sortedBy { it.name }
-      .firstOrNull()
+    val traceFile =
+      outputDir
+        .walkTopDown()
+        .filter { it.isFile && it.extension == "perfetto-trace" }
+        .sortedBy { it.name }
+        .firstOrNull()
 
     return traceFile
   }
@@ -364,36 +403,49 @@ open class SimpleperfCommand(
   runnerOpts: RunnerOptions,
   private val benchmarkRunner: BenchmarkRunner = DefaultBenchmarkRunner,
 ) : CliktCommand(name = "simpleperf") {
-  override fun help(context: Context) = """
+  override fun help(context: Context) =
+    """
     Collect a simpleperf trace. Tracing an instrumentation symbol requires the instrumentation SDK.
-  """.trimIndent()
+    """
+      .trimIndent()
 
   protected val baseOpts by runnerOpts.base
   protected val runnerVals: RunnerValues by runnerOpts
 
-  private val callGraph by option(
-    "--call-graph",
-    help = "Call graph recording mode: fp (default, works everywhere) or dwarf (better accuracy for native code, but not always supported). Use --call-graph=none to disable."
-  ).default("fp")
+  private val callGraph by
+    option(
+        "--call-graph",
+        help =
+          "Call graph recording mode: fp (default, works everywhere) or dwarf (better accuracy for native code, but not always supported). Use --call-graph=none to disable.",
+      )
+      .default("fp")
 
-  private val view by option(
-    "--view",
-    help = "Open the profile in Firefox Profiler after collection. Converts to gecko format and opens the first trace."
-  ).flag("--no-view", default = true)
+  private val view by
+    option(
+        "--view",
+        help =
+          "Open the profile in Firefox Profiler after collection. Converts to gecko format and opens the first trace.",
+      )
+      .flag("--no-view", default = true)
 
-  private val outputFile by option(
-    "-o", "--output",
-    help = "Path to save the profile file. If not specified, profile is saved in the run directory."
-  ).file(canBeDir = false)
+  private val outputFile by
+    option(
+        "-o",
+        "--output",
+        help =
+          "Path to save the profile file. If not specified, profile is saved in the run directory.",
+      )
+      .file(canBeDir = false)
 
   override fun run() {
     baseOpts.setup()
 
-    val profileFile = if (shouldRunManualMode()) {
-      runManualSimpleperf()
-    } else {
-      runInstrumentedSimpleperf()
-    }
+    val profileFile =
+      if (shouldRunManualMode()) {
+        runManualSimpleperf()
+      } else {
+        runInstrumentedSimpleperf()
+      }
 
     if (profileFile != null && outputFile != null) {
       outputFile!!.parentFile?.mkdirs()
@@ -414,24 +466,33 @@ open class SimpleperfCommand(
     outputDir.mkdirs()
     val hostTraceFile = File(outputDir, "perf.simpleperf.data")
 
-    adb.shellRun("mkdir", "-p", FrancisConstants.DEVICE_FRANCIS_DIR) { logPriority = LogPriority.DEBUG }
+    adb.shellRun("mkdir", "-p", FrancisConstants.DEVICE_FRANCIS_DIR) {
+      logPriority = LogPriority.DEBUG
+    }
 
     // Check if cpu-cycles event is supported, else use cpu-clock (same as instrumented path)
-    val simpleperfList = adb.shellStdout("simpleperf", "list", "hw") { logPriority = LogPriority.DEBUG }
+    val simpleperfList =
+      adb.shellStdout("simpleperf", "list", "hw") { logPriority = LogPriority.DEBUG }
     val supportsCpuCycles = SimpleperfUtils.supportsCpuCycles(simpleperfList)
 
     // Check if root is available
-    val isRootAvailable = adb.shellStdout("su", "0", "id", allowedExitCodes = listOf(0, 1, 255)) {
-      logPriority = LogPriority.DEBUG
-    }.contains("uid=0")
+    val isRootAvailable =
+      adb
+        .shellStdout("su", "0", "id", allowedExitCodes = listOf(0, 1, 255)) {
+          logPriority = LogPriority.DEBUG
+        }
+        .contains("uid=0")
 
-    val simpleperfCmd = shellEscape(SimpleperfUtils.buildRecordCommand(
-      outputPath = deviceTracePath,
-      supportsCpuCycles = supportsCpuCycles,
-      callGraph = callGraph.takeIf { it != "none" },
-      targetPackage = appPackage,
-      useRoot = isRootAvailable,
-    ))
+    val simpleperfCmd =
+      shellEscape(
+        SimpleperfUtils.buildRecordCommand(
+          outputPath = deviceTracePath,
+          supportsCpuCycles = supportsCpuCycles,
+          callGraph = callGraph.takeIf { it != "none" },
+          targetPackage = appPackage,
+          useRoot = isRootAvailable,
+        )
+      )
 
     log(INFO) { "Starting simpleperf profiling..." }
     if (appPackage != null) {
@@ -441,16 +502,19 @@ open class SimpleperfCommand(
     }
 
     // Run simpleperf with PTY for Ctrl+C signal handling
-    val simpleperfProc = adb.cmdStart("shell", "-t", simpleperfCmd) {
-      // We need to inherit stdin in order for CTRL+C to be handled by the inner PTY.
-      stdinRedirect = InputRedirectSpec.INHERIT
-      // We need to inherit stdout in order for `CTRL+C` to be echoed.
-      // Unfortunately that means that simpleperf logging won't be captured in
-      // our log file.
-      stdoutRedirect = OutputRedirectSpec.INHERIT
-    }
+    val simpleperfProc =
+      adb.cmdStart("shell", "-t", simpleperfCmd) {
+        // We need to inherit stdin in order for CTRL+C to be handled by the inner PTY.
+        stdinRedirect = InputRedirectSpec.INHERIT
+        // We need to inherit stdout in order for `CTRL+C` to be echoed.
+        // Unfortunately that means that simpleperf logging won't be captured in
+        // our log file.
+        stdoutRedirect = OutputRedirectSpec.INHERIT
+      }
 
-    log(INFO) { "Press Ctrl+C to stop profiling (be patient - it will take half a minute or so after you press CTRL+C to flush the buffers)." }
+    log(INFO) {
+      "Press Ctrl+C to stop profiling (be patient - it will take half a minute or so after you press CTRL+C to flush the buffers)."
+    }
     simpleperfProc.waitFor()
 
     log { "Pulling profile from device..." }
@@ -469,19 +533,23 @@ open class SimpleperfCommand(
 
   private fun runInstrumentedSimpleperf(): File? {
     val callGraphValue = callGraph.takeIf { it != "none" }
-    val optsWithProfiler = object : RunnerValues by runnerVals {
-      override val profiler: String = "simpleperf"
-      override val simpleperfCallGraph: String? = callGraphValue
-      override val overrideIterations: Int? = runnerVals.overrideIterations ?: 1
-      override val delegate: RunnerValues get() = runnerVals
-    }
+    val optsWithProfiler =
+      object : RunnerValues by runnerVals {
+        override val profiler: String = "simpleperf"
+        override val simpleperfCallGraph: String? = callGraphValue
+        override val overrideIterations: Int? = runnerVals.overrideIterations ?: 1
+        override val delegate: RunnerValues
+          get() = runnerVals
+      }
     runBenchmark(baseOpts, optsWithProfiler)
 
     val outputDir = File(optsWithProfiler.hostOutputDir)
-    val simpleperfFile = outputDir.walkTopDown()
-      .filter { it.isFile && it.name.endsWith(".simpleperf.data") }
-      .sortedBy { it.name }
-      .firstOrNull()
+    val simpleperfFile =
+      outputDir
+        .walkTopDown()
+        .filter { it.isFile && it.name.endsWith(".simpleperf.data") }
+        .sortedBy { it.name }
+        .firstOrNull()
 
     if (view) {
       if (simpleperfFile != null) {
@@ -501,9 +569,9 @@ open class SimpleperfCommand(
 }
 
 /**
- * @param runnerOptionsFactory Factory to create fresh RunnerOptions instances.
- *   A factory is needed because AbCommand creates multiple instances with different parsed args.
- *   The factory receives BaseConfig which includes francisRunDir and hostOutputDir.
+ * @param runnerOptionsFactory Factory to create fresh RunnerOptions instances. A factory is needed
+ *   because AbCommand creates multiple instances with different parsed args. The factory receives
+ *   BaseConfig which includes francisRunDir and hostOutputDir.
  * @param runBenchmark Function to execute a benchmark. Override to customize benchmark execution
  *   behavior (e.g., disable thermals before running). This is shared by all commands that run
  *   benchmarks: bench, ab, perfetto, and simpleperf.
@@ -517,46 +585,65 @@ fun runFrancis(
   rawArgs: Array<String>,
   name: String,
   help: String = "Francis - Android benchmark runner.",
-  runnerOptionsFactory: (BaseConfig) -> RunnerOptions = { config -> RunnerOptions(config = config) },
+  runnerOptionsFactory: (BaseConfig) -> RunnerOptions = { config ->
+    RunnerOptions(config = config)
+  },
   runBenchmark: BenchmarkRunner = DefaultBenchmarkRunner,
-  benchCommandFactory: (RunnerOptions, BenchmarkRunner) -> BenchCommand = { opts, runner -> BenchCommand(opts, runner) },
-  simplePerfCommandFactory: (RunnerOptions, BenchmarkRunner) -> SimpleperfCommand = { opts, runner -> SimpleperfCommand(opts, runner) },
+  benchCommandFactory: (RunnerOptions, BenchmarkRunner) -> BenchCommand = { opts, runner ->
+    BenchCommand(opts, runner)
+  },
+  simplePerfCommandFactory: (RunnerOptions, BenchmarkRunner) -> SimpleperfCommand =
+    { opts, runner ->
+      SimpleperfCommand(opts, runner)
+    },
   compareCommandFactory: () -> CompareCommand = { CompareCommand() },
-  perfettoCommandFactory: (RunnerOptions, BenchmarkRunner) -> PerfettoCommand = { opts, runner -> PerfettoCommand(opts, runner) },
+  perfettoCommandFactory: (RunnerOptions, BenchmarkRunner) -> PerfettoCommand = { opts, runner ->
+    PerfettoCommand(opts, runner)
+  },
   viewCommandFactory: (BaseOptions) -> ViewCommand = { opts -> ViewCommand(opts) },
-) = pithyMain(rawArgs) {
-  val baseConfig = BaseConfig(rawArgs = rawArgs.toList())
+) =
+  pithyMain(rawArgs) {
+    val baseConfig = BaseConfig(rawArgs = rawArgs.toList())
 
-  val abIdx = rawArgs.indexOf("ab")
-  val abArgs = if (abIdx >= 0) {
-    preprocessAbArgs(rawArgs.drop(abIdx + 1))
-  } else {
-    null
-  }
-  val cliktArgs = if (abArgs != null) {
-    rawArgs.take(abIdx + 1) + abArgs.shared
-  } else {
-    rawArgs.toList()
-  }
+    val abIdx = rawArgs.indexOf("ab")
+    val abArgs =
+      if (abIdx >= 0) {
+        preprocessAbArgs(rawArgs.drop(abIdx + 1))
+      } else {
+        null
+      }
+    val cliktArgs =
+      if (abArgs != null) {
+        rawArgs.take(abIdx + 1) + abArgs.shared
+      } else {
+        rawArgs.toList()
+      }
 
-  val command = FrancisEntrypoint(name, help)
-    .subcommands(
-      benchCommandFactory(runnerOptionsFactory(baseConfig), runBenchmark),
-      AbCommand(baseConfig, runnerOptionsFactory, runBenchmark, rawArgs.toList(), entrypointName = name),
-      compareCommandFactory(),
-      perfettoCommandFactory(runnerOptionsFactory(baseConfig), runBenchmark),
-      simplePerfCommandFactory(runnerOptionsFactory(baseConfig), runBenchmark),
-      viewCommandFactory(BaseOptions(baseConfig)),
-    )
-  try {
-    command.parse(cliktArgs)
-  } catch (e: UsageError) {
-    command.echoFormattedHelp(e)
-    System.err.println()
-    System.err.println("For more information, try '--help'.")
-    throw PithyException(e.statusCode, null)
-  } catch (e: CliktError) {
-    command.echoFormattedHelp(e)
-    throw PithyException(e.statusCode, null)
+    val command =
+      FrancisEntrypoint(name, help)
+        .subcommands(
+          benchCommandFactory(runnerOptionsFactory(baseConfig), runBenchmark),
+          AbCommand(
+            baseConfig,
+            runnerOptionsFactory,
+            runBenchmark,
+            rawArgs.toList(),
+            entrypointName = name,
+          ),
+          compareCommandFactory(),
+          perfettoCommandFactory(runnerOptionsFactory(baseConfig), runBenchmark),
+          simplePerfCommandFactory(runnerOptionsFactory(baseConfig), runBenchmark),
+          viewCommandFactory(BaseOptions(baseConfig)),
+        )
+    try {
+      command.parse(cliktArgs)
+    } catch (e: UsageError) {
+      command.echoFormattedHelp(e)
+      System.err.println()
+      System.err.println("For more information, try '--help'.")
+      throw PithyException(e.statusCode, null)
+    } catch (e: CliktError) {
+      command.echoFormattedHelp(e)
+      throw PithyException(e.statusCode, null)
+    }
   }
-}

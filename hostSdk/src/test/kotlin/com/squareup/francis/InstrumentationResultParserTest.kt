@@ -7,7 +7,8 @@ class InstrumentationResultParserTest {
 
   @Test
   fun success_singleTest() {
-    val stdout = """
+    val stdout =
+      """
       com.squareup.francis.demoinstrumentation.DemoBenchmark:
       INSTRUMENTATION_STATUS: android.studio.v2display.benchmark.outputDirPath=/sdcard/Android/media/com.squareup.francis.demoinstrumentation/additional_test_output
       INSTRUMENTATION_STATUS_CODE: 2
@@ -16,7 +17,8 @@ class InstrumentationResultParserTest {
       Time: 8.397
 
       OK (1 test)
-    """.trimIndent()
+      """
+        .trimIndent()
 
     val result = InstrumentationResultParser.parse(stdout, stderr = "", exitCode = 0)
 
@@ -25,13 +27,15 @@ class InstrumentationResultParserTest {
 
   @Test
   fun success_multipleTests() {
-    val stdout = """
+    val stdout =
+      """
       ....
 
       Time: 12.5
 
       OK (4 tests)
-    """.trimIndent()
+      """
+        .trimIndent()
 
     val result = InstrumentationResultParser.parse(stdout, stderr = "", exitCode = 0)
 
@@ -40,7 +44,8 @@ class InstrumentationResultParserTest {
 
   @Test
   fun failure_testFailure() {
-    val stdout = """
+    val stdout =
+      """
       com.squareup.francis.demoinstrumentation.DemoBenchmark:
       Error in startup(com.squareup.francis.demoinstrumentation.DemoBenchmark):
       java.lang.AssertionError: ERRORS (not suppressed): EMULATOR
@@ -52,7 +57,8 @@ class InstrumentationResultParserTest {
 
       FAILURES!!!
       Tests run: 1,  Failures: 1
-    """.trimIndent()
+      """
+        .trimIndent()
 
     val result = InstrumentationResultParser.parse(stdout, stderr = "", exitCode = 0)
 
@@ -63,7 +69,8 @@ class InstrumentationResultParserTest {
 
   @Test
   fun failure_classNotFound() {
-    val stdout = """
+    val stdout =
+      """
       com.nonexistent.Class:
       Error in initializationError(com.nonexistent.Class):
       java.lang.RuntimeException: Failed loading specified test class 'com.nonexistent.Class'
@@ -76,7 +83,8 @@ class InstrumentationResultParserTest {
 
       FAILURES!!!
       Tests run: 1,  Failures: 1
-    """.trimIndent()
+      """
+        .trimIndent()
 
     val result = InstrumentationResultParser.parse(stdout, stderr = "", exitCode = 0)
 
@@ -85,13 +93,15 @@ class InstrumentationResultParserTest {
 
   @Test
   fun failure_instrumentationFailed() {
-    val stdout = """
+    val stdout =
+      """
       android.util.AndroidException: INSTRUMENTATION_FAILED: com.nonexistent.package/androidx.test.runner.AndroidJUnitRunner
               at com.android.commands.am.Instrument.run(Instrument.java:543)
       INSTRUMENTATION_STATUS: Error=Unable to find instrumentation info for: ComponentInfo{com.nonexistent.package/androidx.test.runner.AndroidJUnitRunner}
       INSTRUMENTATION_STATUS: id=ActivityManagerService
       INSTRUMENTATION_STATUS_CODE: -1
-    """.trimIndent()
+      """
+        .trimIndent()
 
     val result = InstrumentationResultParser.parse(stdout, stderr = "", exitCode = 1)
 
@@ -102,13 +112,15 @@ class InstrumentationResultParserTest {
 
   @Test
   fun failure_earlyError_badArgument() {
-    val stdout = """
+    val stdout =
+      """
       Activity manager (activity) commands:
         help
             Print this help text.
         start-activity [-D] [-N] [-W] [-P <FILE>] [--start-profiler <FILE>]
       ...
-    """.trimIndent()
+      """
+        .trimIndent()
 
     val stderr = "Error: Invalid userId -2"
 
@@ -131,11 +143,13 @@ class InstrumentationResultParserTest {
 
   @Test
   fun failure_instrumentationStatusCodeNegative() {
-    val stdout = """
+    val stdout =
+      """
       INSTRUMENTATION_STATUS: stream=
       INSTRUMENTATION_STATUS: test=myTest
       INSTRUMENTATION_STATUS_CODE: -1
-    """.trimIndent()
+      """
+        .trimIndent()
 
     val result = InstrumentationResultParser.parse(stdout, stderr = "", exitCode = 0)
 

@@ -1,28 +1,23 @@
 package com.squareup.francis
 
 import com.github.ajalt.clikt.parameters.groups.OptionGroup
-import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.switch
-import com.github.ajalt.clikt.parameters.types.enum
 import com.squareup.francis.script.logging.logFile
 import com.squareup.francis.script.logging.setupLogging
 import com.squareup.francis.script.logging.stdErr
 import com.squareup.francis.script.logging.timeFormatter
-import logcat.LogPriority
 import java.time.LocalDateTime
-
+import logcat.LogPriority
 
 interface BaseValues {
   val verbosity: LogPriority
   val devMode: Boolean
 }
 
-/**
- * Runtime configuration that's not specified via CLI args.
- */
+/** Runtime configuration that's not specified via CLI args. */
 class BaseConfig(
   val francisRunDir: String = nextFrancisRunDir().absolutePath,
   /**
@@ -38,30 +33,33 @@ class BaseConfig(
   val resolutionCache: MutableMap<String, String> = mutableMapOf(),
   val rawArgs: List<String> = emptyList(),
 ) {
-  val hostOutputDir: String get() = if (outputSubdir.isEmpty()) francisRunDir else "$francisRunDir/$outputSubdir"
+  val hostOutputDir: String
+    get() = if (outputSubdir.isEmpty()) francisRunDir else "$francisRunDir/$outputSubdir"
 
   fun withOutputSubdir(subdir: String) = BaseConfig(francisRunDir, subdir, resolutionCache, rawArgs)
 }
 
 class BaseOptions(val config: BaseConfig = BaseConfig()) : OptionGroup(), BaseValues {
-  private val verbosityFlags: List<LogPriority> by option()
-    .switch(
-      "--verbose" to LogPriority.VERBOSE,
-      "--debug" to LogPriority.DEBUG,
-      "--info"  to LogPriority.INFO,
-      "--warn"  to LogPriority.WARN,
-      "--error" to LogPriority.ERROR,
-    )
-    .multiple()
+  private val verbosityFlags: List<LogPriority> by
+    option()
+      .switch(
+        "--verbose" to LogPriority.VERBOSE,
+        "--debug" to LogPriority.DEBUG,
+        "--info" to LogPriority.INFO,
+        "--warn" to LogPriority.WARN,
+        "--error" to LogPriority.ERROR,
+      )
+      .multiple()
 
   override val verbosity: LogPriority by lazy {
     when (verbosityFlags.size) {
       0 -> LogPriority.INFO // default
       1 -> verbosityFlags[0]
-      else -> throw PithyException(
-        1,
-        "Options --verbose/--debug/--info/--warn/--error are mutually exclusive."
-      )
+      else ->
+        throw PithyException(
+          1,
+          "Options --verbose/--debug/--info/--warn/--error are mutually exclusive.",
+        )
     }
   }
 

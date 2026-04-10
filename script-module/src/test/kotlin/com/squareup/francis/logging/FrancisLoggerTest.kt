@@ -1,11 +1,11 @@
 package com.squareup.francis.script.logging
 
 import com.google.common.truth.Truth.assertThat
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import logcat.LogPriority.DEBUG
 import logcat.LogPriority.WARN
 import org.junit.Test
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 
 class FrancisLoggerTest {
   @Test
@@ -13,13 +13,14 @@ class FrancisLoggerTest {
     val wrappedOutput = ByteArrayOutputStream()
     val fileOutput = ByteArrayOutputStream()
     val fileStream = PrintStream(fileOutput, true)
-    val logger = FrancisLogger(
-      wrapped = PrintStream(wrappedOutput, true),
-      defaultFormatter = { it },
-      minLogPriority = DEBUG,
-      logPath = null,
-      logFileStream = fileStream,
-    )
+    val logger =
+      FrancisLogger(
+        wrapped = PrintStream(wrappedOutput, true),
+        defaultFormatter = { it },
+        minLogPriority = DEBUG,
+        logPath = null,
+        logFileStream = fileStream,
+      )
 
     logger.println("a\u0001b\tc")
 
@@ -32,13 +33,14 @@ class FrancisLoggerTest {
     val wrappedOutput = ByteArrayOutputStream()
     val fileOutput = ByteArrayOutputStream()
     val fileStream = PrintStream(fileOutput, true)
-    val logger = FrancisLogger(
-      wrapped = PrintStream(wrappedOutput, true),
-      defaultFormatter = { it },
-      minLogPriority = DEBUG,
-      logPath = null,
-      logFileStream = fileStream,
-    )
+    val logger =
+      FrancisLogger(
+        wrapped = PrintStream(wrappedOutput, true),
+        defaultFormatter = { it },
+        minLogPriority = DEBUG,
+        logPath = null,
+        logFileStream = fileStream,
+      )
 
     logger.println("only-file", logFileOnly = true)
 
@@ -51,13 +53,14 @@ class FrancisLoggerTest {
     val wrappedOutput = ByteArrayOutputStream()
     val fileOutput = ByteArrayOutputStream()
     val fileStream = PrintStream(fileOutput, true)
-    val logger = FrancisLogger(
-      wrapped = PrintStream(wrappedOutput, true),
-      defaultFormatter = { it },
-      minLogPriority = WARN,
-      logPath = null,
-      logFileStream = fileStream,
-    )
+    val logger =
+      FrancisLogger(
+        wrapped = PrintStream(wrappedOutput, true),
+        defaultFormatter = { it },
+        minLogPriority = WARN,
+        logPath = null,
+        logFileStream = fileStream,
+      )
 
     logger.log(DEBUG, "tag", "debug message")
 

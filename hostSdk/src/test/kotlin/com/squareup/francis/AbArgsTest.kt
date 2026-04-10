@@ -33,11 +33,10 @@ class AbArgsTest {
 
   @Test
   fun baselineThenTreatment_splitsCorrectly() {
-    val result = preprocessAbArgs(listOf(
-      "--app", "foo.apk",
-      "--baseline", "--bar", "123",
-      "--treatment", "--bar", "456"
-    ))
+    val result =
+      preprocessAbArgs(
+        listOf("--app", "foo.apk", "--baseline", "--bar", "123", "--treatment", "--bar", "456")
+      )
 
     assertThat(result.shared).containsExactly("--app", "foo.apk").inOrder()
     assertThat(result.baselineOnly).containsExactly("--bar", "123").inOrder()
@@ -46,11 +45,10 @@ class AbArgsTest {
 
   @Test
   fun treatmentThenBaseline_splitsCorrectly() {
-    val result = preprocessAbArgs(listOf(
-      "--app", "foo.apk",
-      "--treatment", "--bar", "456",
-      "--baseline", "--bar", "123"
-    ))
+    val result =
+      preprocessAbArgs(
+        listOf("--app", "foo.apk", "--treatment", "--bar", "456", "--baseline", "--bar", "123")
+      )
 
     assertThat(result.shared).containsExactly("--app", "foo.apk").inOrder()
     assertThat(result.baselineOnly).containsExactly("--bar", "123").inOrder()
@@ -59,22 +57,20 @@ class AbArgsTest {
 
   @Test
   fun baselineArgs_combinesSharedAndBaseline() {
-    val result = preprocessAbArgs(listOf(
-      "--app", "foo.apk",
-      "--baseline", "--bar", "123",
-      "--treatment", "--bar", "456"
-    ))
+    val result =
+      preprocessAbArgs(
+        listOf("--app", "foo.apk", "--baseline", "--bar", "123", "--treatment", "--bar", "456")
+      )
 
     assertThat(result.baselineArgs()).containsExactly("--app", "foo.apk", "--bar", "123").inOrder()
   }
 
   @Test
   fun treatmentArgs_combinesSharedAndTreatment() {
-    val result = preprocessAbArgs(listOf(
-      "--app", "foo.apk",
-      "--baseline", "--bar", "123",
-      "--treatment", "--bar", "456"
-    ))
+    val result =
+      preprocessAbArgs(
+        listOf("--app", "foo.apk", "--baseline", "--bar", "123", "--treatment", "--bar", "456")
+      )
 
     assertThat(result.treatmentArgs()).containsExactly("--app", "foo.apk", "--bar", "456").inOrder()
   }
@@ -90,7 +86,8 @@ class AbArgsTest {
 
   @Test
   fun markersAtStart_noSharedArgs() {
-    val result = preprocessAbArgs(listOf("--baseline", "--bar", "123", "--treatment", "--bar", "456"))
+    val result =
+      preprocessAbArgs(listOf("--baseline", "--bar", "123", "--treatment", "--bar", "456"))
 
     assertThat(result.shared).isEmpty()
     assertThat(result.baselineOnly).containsExactly("--bar", "123").inOrder()
@@ -131,11 +128,19 @@ class AbArgsTest {
 
   @Test
   fun mixedAliases_workTogether() {
-    val result = preprocessAbArgs(listOf(
-      "--app", "foo.apk",
-      "--baseline-options", "--bar", "123",
-      "--treatment-opts", "--bar", "456"
-    ))
+    val result =
+      preprocessAbArgs(
+        listOf(
+          "--app",
+          "foo.apk",
+          "--baseline-options",
+          "--bar",
+          "123",
+          "--treatment-opts",
+          "--bar",
+          "456",
+        )
+      )
 
     assertThat(result.shared).containsExactly("--app", "foo.apk").inOrder()
     assertThat(result.baselineOnly).containsExactly("--bar", "123").inOrder()
@@ -144,17 +149,23 @@ class AbArgsTest {
 
   @Test
   fun duplicateBaselineMarkers_throwsError() {
-    val exception = org.junit.Assert.assertThrows(IllegalStateException::class.java) {
-      preprocessAbArgs(listOf("--baseline", "--bar", "123", "--baseline-options", "--baz", "456"))
-    }
-    assertThat(exception).hasMessageThat().contains("Cannot specify baseline options more than once")
+    val exception =
+      org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+        preprocessAbArgs(listOf("--baseline", "--bar", "123", "--baseline-options", "--baz", "456"))
+      }
+    assertThat(exception)
+      .hasMessageThat()
+      .contains("Cannot specify baseline options more than once")
   }
 
   @Test
   fun duplicateTreatmentMarkers_throwsError() {
-    val exception = org.junit.Assert.assertThrows(IllegalStateException::class.java) {
-      preprocessAbArgs(listOf("--treatment", "--bar", "123", "--treatment-opts", "--baz", "456"))
-    }
-    assertThat(exception).hasMessageThat().contains("Cannot specify treatment options more than once")
+    val exception =
+      org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+        preprocessAbArgs(listOf("--treatment", "--bar", "123", "--treatment-opts", "--baz", "456"))
+      }
+    assertThat(exception)
+      .hasMessageThat()
+      .contains("Cannot specify treatment options more than once")
   }
 }

@@ -12,9 +12,7 @@ import org.junit.rules.TemporaryFolder
 
 class LineBufferedLogOutputStreamTest {
   companion object {
-    @JvmField
-    @ClassRule
-    val tempFolder = TemporaryFolder()
+    @JvmField @ClassRule val tempFolder = TemporaryFolder()
 
     @JvmStatic
     @BeforeClass
@@ -30,7 +28,8 @@ class LineBufferedLogOutputStreamTest {
 
   @Test
   fun decodesUtf8AcrossWrites() {
-    val stream = LineBufferedLogOutputStream(formatter = ProcessOutputFormatter(streamType = "test"))
+    val stream =
+      LineBufferedLogOutputStream(formatter = ProcessOutputFormatter(streamType = "test"))
 
     val message = "héllo 世界"
     val bytes = message.toByteArray(Charsets.UTF_8)
@@ -44,7 +43,8 @@ class LineBufferedLogOutputStreamTest {
 
   @Test
   fun closeFlushesIncompleteLineAsUtf8() {
-    val stream = LineBufferedLogOutputStream(formatter = ProcessOutputFormatter(streamType = "test"))
+    val stream =
+      LineBufferedLogOutputStream(formatter = ProcessOutputFormatter(streamType = "test"))
 
     val message = "日本語"
     val bytes = message.toByteArray(Charsets.UTF_8)

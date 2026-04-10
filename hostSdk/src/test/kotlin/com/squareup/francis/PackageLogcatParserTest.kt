@@ -20,7 +20,8 @@ class PackageLogcatParserTest {
   @Test
   fun processesValidLogcatLine() {
     val (parser, entries) = createParserWithCapture()
-    val logcatLine = "01-13 03:00:25.346   603   762 W IPCThreadState: Sending oneway calls to frozen process.\n"
+    val logcatLine =
+      "01-13 03:00:25.346   603   762 W IPCThreadState: Sending oneway calls to frozen process.\n"
 
     parser.write(logcatLine.toByteArray())
     parser.close()
@@ -37,10 +38,12 @@ class PackageLogcatParserTest {
   @Test
   fun processesMultipleLines() {
     val (parser, entries) = createParserWithCapture()
-    val lines = """
+    val lines =
+      """
       01-13 03:00:25.346   603   762 I FirstTag: First message
       01-13 03:00:25.347   603   762 D SecondTag: Second message
-    """.trimIndent() + "\n"
+      """
+        .trimIndent() + "\n"
 
     parser.write(lines.toByteArray())
     parser.close()
@@ -99,15 +102,16 @@ class PackageLogcatParserTest {
   @Test
   fun mapsLogcatLevelsCorrectly() {
     val (parser, entries) = createParserWithCapture()
-    val expectedLevels = mapOf(
-      'V' to LogPriority.VERBOSE,
-      'D' to LogPriority.DEBUG,
-      'I' to LogPriority.INFO,
-      'W' to LogPriority.WARN,
-      'E' to LogPriority.ERROR,
-      'F' to LogPriority.ERROR,
-      'S' to LogPriority.ERROR,
-    )
+    val expectedLevels =
+      mapOf(
+        'V' to LogPriority.VERBOSE,
+        'D' to LogPriority.DEBUG,
+        'I' to LogPriority.INFO,
+        'W' to LogPriority.WARN,
+        'E' to LogPriority.ERROR,
+        'F' to LogPriority.ERROR,
+        'S' to LogPriority.ERROR,
+      )
 
     for ((logcatLevel, _) in expectedLevels) {
       val line = "01-01 00:00:00.000     1     1 $logcatLevel Tag$logcatLevel: msg\n"
@@ -152,15 +156,16 @@ class PackageLogcatParserTest {
 
   @Test
   fun formatLogcatLine_formatsCorrectly() {
-    val parsed = LogcatLine(
-      date = "01-13",
-      time = "03:00:25.346",
-      pid = 603,
-      tid = 762,
-      level = 'W',
-      tag = "MyTag",
-      message = "Test message",
-    )
+    val parsed =
+      LogcatLine(
+        date = "01-13",
+        time = "03:00:25.346",
+        pid = 603,
+        tid = 762,
+        level = 'W',
+        tag = "MyTag",
+        message = "Test message",
+      )
 
     val formatted = PackageLogcatParser.formatLogcatLine(parsed)
 

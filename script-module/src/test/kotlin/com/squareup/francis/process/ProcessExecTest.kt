@@ -20,7 +20,8 @@ class ProcessExecTest {
 
   @Test
   fun outputs_allowsAnyExitCode_whenAllowedExitCodesIsNull() {
-    val result = SubProc().outputs("sh", "-c", "echo out; echo err >&2; exit 9", allowedExitCodes = null)
+    val result =
+      SubProc().outputs("sh", "-c", "echo out; echo err >&2; exit 9", allowedExitCodes = null)
 
     assertThat(result.exitCode).isEqualTo(9)
     assertThat(result.stdout).isEqualTo("out\n")

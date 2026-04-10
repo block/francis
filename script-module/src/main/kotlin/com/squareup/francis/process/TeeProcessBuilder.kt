@@ -1,21 +1,20 @@
 package com.squareup.francis.script.process
 
 import com.squareup.francis.script.logging.log
-import logcat.LogPriority
-import logcat.LogPriority.DEBUG
-import logcat.LogPriority.WARN
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.ByteArrayOutputStream
+import java.io.Closeable
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
-import java.io.Closeable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import logcat.LogPriority
+import logcat.LogPriority.DEBUG
 
 private val teePumpExecutor = Executors.newCachedThreadPool { r ->
   Thread(r, "TeeProcess-pump").apply { isDaemon = true }
@@ -23,8 +22,11 @@ private val teePumpExecutor = Executors.newCachedThreadPool { r ->
 
 sealed class OutputTarget {
   object Capture : OutputTarget()
+
   object Inherit : OutputTarget()
+
   data class ToFile(val file: File, val append: Boolean = false) : OutputTarget()
+
   data class ToStream(val stream: OutputStream, val autoClose: Boolean = true) : OutputTarget()
 }
 
@@ -36,11 +38,12 @@ data class OutputRedirectSpec(val targets: List<OutputTarget>) {
   operator fun plus(other: OutputRedirectSpec): OutputRedirectSpec {
     val merged = targets.toMutableList()
     for (target in other.targets) {
-      val isDuplicate = when (target) {
-        is OutputTarget.Capture -> merged.any { it is OutputTarget.Capture }
-        is OutputTarget.Inherit -> merged.any { it is OutputTarget.Inherit }
-        else -> false
-      }
+      val isDuplicate =
+        when (target) {
+          is OutputTarget.Capture -> merged.any { it is OutputTarget.Capture }
+          is OutputTarget.Inherit -> merged.any { it is OutputTarget.Inherit }
+          else -> false
+        }
       if (!isDuplicate) merged.add(target)
     }
     return OutputRedirectSpec(merged)
@@ -55,15 +58,19 @@ data class OutputRedirectSpec(val targets: List<OutputTarget>) {
 
 sealed class InputSource {
   object Pipe : InputSource()
+
   object Inherit : InputSource()
+
   object Null : InputSource()
+
   data class FromFile(val file: File) : InputSource()
+
   data class FromStream(val stream: InputStream, val autoClose: Boolean = true) : InputSource()
 }
 
 data class InputRedirectSpec(
   val source: InputSource,
-  val teeOutputs: List<OutputTarget.ToStream> = emptyList()
+  val teeOutputs: List<OutputTarget.ToStream> = emptyList(),
 ) {
   companion object {
     val NULL = InputRedirectSpec(InputSource.Null)
@@ -81,16 +88,23 @@ class TeeProcess(
   private val stdinWrapper: OutputStream?,
   private val command: List<String>,
   private val pumpFutures: List<CompletableFuture<Void>> = emptyList(),
-  private val logPriority: LogPriority? = null
+  private val logPriority: LogPriority? = null,
 ) {
-  val stdinStream: OutputStream get() = stdinWrapper ?: delegate.outputStream
-  val stdoutStream: InputStream get() = stdoutPipe ?: error("stdout is not available")
-  val stderrStream: InputStream get() = stderrPipe ?: error("stderr is not available")
+  val stdinStream: OutputStream
+    get() = stdinWrapper ?: delegate.outputStream
+
+  val stdoutStream: InputStream
+    get() = stdoutPipe ?: error("stdout is not available")
+
+  val stderrStream: InputStream
+    get() = stderrPipe ?: error("stderr is not available")
+
   val stdinWriter: BufferedWriter by lazy { stdinStream.bufferedWriter() }
   val stdoutReader: BufferedReader by lazy { stdoutStream.bufferedReader() }
   val stderrReader: BufferedReader by lazy { stderrStream.bufferedReader() }
 
-  val pid: Long get() = delegate.pid()
+  val pid: Long
+    get() = delegate.pid()
 
   // ProcessBuilder has an exitValue API with confusing semantics - it will throw if you call it on
   // a process that hasn't yet finished. We provide a different API - exitCode - which waits for
@@ -108,7 +122,8 @@ class TeeProcess(
     code
   }
 
-  val isAlive: Boolean get() = delegate.isAlive
+  val isAlive: Boolean
+    get() = delegate.isAlive
 
   fun waitFor(): Int {
     return exitCode
@@ -121,12 +136,7 @@ class TeeProcess(
     // We only check the exitCode if allowedExitCodes is non-null
     allowedExitCodes?.let {
       if (exitCode !in it) {
-        throw FailedExecException(
-          exitCode,
-          command,
-          stdoutCapture,
-          stderrCapture,
-        )
+        throw FailedExecException(exitCode, command, stdoutCapture, stderrCapture)
       }
     }
 
@@ -137,7 +147,9 @@ class TeeProcess(
     val didComplete = delegate.waitFor(timeout, unit)
     if (didComplete) {
       awaitPumps()
-      logPriority?.let { log(it) { "(${delegate.pid()}) exited with code ${delegate.exitValue()}" } }
+      logPriority?.let {
+        log(it) { "(${delegate.pid()}) exited with code ${delegate.exitValue()}" }
+      }
     }
     return didComplete
   }
@@ -153,8 +165,11 @@ class TeeProcess(
   }
 
   fun awaitPumps() = pumpFutures.forEach { it.join() }
+
   fun exitValue(): Int = delegate.exitValue()
+
   fun destroy() = delegate.destroy()
+
   fun destroyForcibly(): Process = delegate.destroyForcibly()
 }
 
@@ -166,15 +181,20 @@ class TeeProcessBuilder(command: List<String>) {
 
   var command: List<String>
     get() = pb.command().orEmpty()
-    set(value) { pb.command(value) }
+    set(value) {
+      pb.command(value)
+    }
 
   var commandRepr: String? = null
 
   var directory: File?
     get() = pb.directory()
-    set(value) { pb.directory(value) }
+    set(value) {
+      pb.directory(value)
+    }
 
-  var environment: Map<String, String> get() = pb.environment()
+  var environment: Map<String, String>
+    get() = pb.environment()
     set(value) {
       val env = pb.environment()
       env.clear()
@@ -188,16 +208,17 @@ class TeeProcessBuilder(command: List<String>) {
 
   constructor(vararg command: String) : this(command.toList())
 
-  fun copy(): TeeProcessBuilder = TeeProcessBuilder(command).also { copy ->
-    copy.stdoutRedirect = stdoutRedirect
-    copy.stderrRedirect = stderrRedirect
-    copy.stdinRedirect = stdinRedirect
-    copy.commandRepr = commandRepr
-    copy.directory = directory
-    copy.environment = environment.toMap()
-    copy.environmentOverlay = environmentOverlay.toMap()
-    copy.logPriority = logPriority
-  }
+  fun copy(): TeeProcessBuilder =
+    TeeProcessBuilder(command).also { copy ->
+      copy.stdoutRedirect = stdoutRedirect
+      copy.stderrRedirect = stderrRedirect
+      copy.stdinRedirect = stdinRedirect
+      copy.commandRepr = commandRepr
+      copy.directory = directory
+      copy.environment = environment.toMap()
+      copy.environmentOverlay = environmentOverlay.toMap()
+      copy.logPriority = logPriority
+    }
 
   fun start(): TeeProcess {
     pb.environment().putAll(environmentOverlay)
@@ -218,27 +239,13 @@ class TeeProcessBuilder(command: List<String>) {
     }
 
     // Set up stdout pumping
-    var stdoutPipe = setupOutputPumping(
-      process.inputStream,
-      stdoutRedirect,
-      pumpFutures,
-      "stdout"
-    )
+    var stdoutPipe = setupOutputPumping(process.inputStream, stdoutRedirect, pumpFutures, "stdout")
 
     // Set up stderr pumping
-    var stderrPipe = setupOutputPumping(
-      process.errorStream,
-      stderrRedirect,
-      pumpFutures,
-      "stderr"
-    )
+    var stderrPipe = setupOutputPumping(process.errorStream, stderrRedirect, pumpFutures, "stderr")
 
     // Set up stdin pumping
-    var stdinWrapper = setupInputPumping(
-      process.outputStream,
-      stdinRedirect,
-      pumpFutures
-    )
+    var stdinWrapper = setupInputPumping(process.outputStream, stdinRedirect, pumpFutures)
 
     return TeeProcess(
       process,
@@ -249,14 +256,11 @@ class TeeProcessBuilder(command: List<String>) {
       stdinWrapper,
       command,
       pumpFutures,
-      logPriority
+      logPriority,
     )
   }
 
-  fun stdoutText(
-    chomp: Boolean = true,
-    allowedExitCodes: List<Int>? = listOf(0)
-  ): String {
+  fun stdoutText(chomp: Boolean = true, allowedExitCodes: List<Int>? = listOf(0)): String {
     stdoutRedirect += OutputRedirectSpec.CAPTURE
     stderrRedirect += OutputRedirectSpec.CAPTURE
     val proc = start()
@@ -265,10 +269,14 @@ class TeeProcessBuilder(command: List<String>) {
 
   private fun validateRedirects() {
     // INHERIT must be the sole target - can't tee from/to inherited streams
-    if (stdoutRedirect.targets.any { it is OutputTarget.Inherit } && stdoutRedirect.targets.size > 1) {
+    if (
+      stdoutRedirect.targets.any { it is OutputTarget.Inherit } && stdoutRedirect.targets.size > 1
+    ) {
       throw IllegalArgumentException("stdout INHERIT cannot be combined with other targets")
     }
-    if (stderrRedirect.targets.any { it is OutputTarget.Inherit } && stderrRedirect.targets.size > 1) {
+    if (
+      stderrRedirect.targets.any { it is OutputTarget.Inherit } && stderrRedirect.targets.size > 1
+    ) {
       throw IllegalArgumentException("stderr INHERIT cannot be combined with other targets")
     }
     if (stdinRedirect.source is InputSource.Inherit && stdinRedirect.teeOutputs.isNotEmpty()) {
@@ -348,10 +356,10 @@ class TeeProcessBuilder(command: List<String>) {
     processStream: InputStream,
     spec: OutputRedirectSpec,
     pumpFutures: MutableList<CompletableFuture<Void>>,
-    streamType: String
+    streamType: String,
   ): BlockingCapturedOutput? {
     val targets = spec.targets
-    
+
     // No pumping needed for these cases (handled by ProcessBuilder directly)
     if (targets.isEmpty()) return null
     if (targets.size == 1) {
@@ -375,7 +383,9 @@ class TeeProcessBuilder(command: List<String>) {
           streamsToClose += buffer
         }
         is OutputTarget.ToFile -> {
-          val fos = if (target.append) FileOutputStream(target.file, true) else FileOutputStream(target.file)
+          val fos =
+            if (target.append) FileOutputStream(target.file, true)
+            else FileOutputStream(target.file)
           outputStreams += fos
           streamsToClose += fos
         }
@@ -397,7 +407,7 @@ class TeeProcessBuilder(command: List<String>) {
   private fun setupInputPumping(
     processStdin: OutputStream,
     spec: InputRedirectSpec,
-    pumpFutures: MutableList<CompletableFuture<Void>>
+    pumpFutures: MutableList<CompletableFuture<Void>>,
   ): OutputStream? {
     val source = spec.source
     val teeOutputs = spec.teeOutputs
@@ -405,24 +415,25 @@ class TeeProcessBuilder(command: List<String>) {
     // Build list of all outputs (process stdin + tee outputs)
     val allOutputs = mutableListOf<OutputStream>(processStdin)
     val streamsToClose = mutableListOf<Closeable>(processStdin)
-    
+
     for (tee in teeOutputs) {
       allOutputs += tee.stream
       if (tee.autoClose) streamsToClose += tee.stream
     }
 
     return when (source) {
-      is InputSource.Null, is InputSource.Inherit -> null
+      is InputSource.Null,
+      is InputSource.Inherit -> null
       is InputSource.Pipe -> {
         if (teeOutputs.isEmpty()) {
-          null  // Use delegate.outputStream directly
+          null // Use delegate.outputStream directly
         } else {
           TeeOutputStream(allOutputs, streamsToClose)
         }
       }
       is InputSource.FromFile -> {
         if (teeOutputs.isEmpty()) {
-          null  // ProcessBuilder handles file redirect directly
+          null // ProcessBuilder handles file redirect directly
         } else {
           val fis = FileInputStream(source.file)
           pumpFutures += pumpAsync(fis, allOutputs, streamsToClose + fis)
@@ -430,11 +441,12 @@ class TeeProcessBuilder(command: List<String>) {
         }
       }
       is InputSource.FromStream -> {
-        pumpFutures += pumpAsync(
-          source.stream,
-          allOutputs,
-          streamsToClose + if (source.autoClose) listOf(source.stream) else emptyList()
-        )
+        pumpFutures +=
+          pumpAsync(
+            source.stream,
+            allOutputs,
+            streamsToClose + if (source.autoClose) listOf(source.stream) else emptyList(),
+          )
         OutputStream.nullOutputStream()
       }
     }
@@ -443,29 +455,32 @@ class TeeProcessBuilder(command: List<String>) {
   private fun pumpAsync(
     source: InputStream,
     outputs: List<OutputStream>,
-    toClose: List<Closeable>
+    toClose: List<Closeable>,
   ): CompletableFuture<Void> {
-    return CompletableFuture.runAsync({
-      try {
-        val buffer = ByteArray(8192)
-        while (true) {
-          val n = source.read(buffer)
-          if (n == -1) break
+    return CompletableFuture.runAsync(
+      {
+        try {
+          val buffer = ByteArray(8192)
+          while (true) {
+            val n = source.read(buffer)
+            if (n == -1) break
+            for (out in outputs) {
+              out.write(buffer, 0, n)
+            }
+          }
           for (out in outputs) {
-            out.write(buffer, 0, n)
+            out.flush()
+          }
+        } finally {
+          for (c in toClose) {
+            try {
+              c.close()
+            } catch (_: Exception) {}
           }
         }
-        for (out in outputs) {
-          out.flush()
-        }
-      } finally {
-        for (c in toClose) {
-          try {
-            c.close()
-          } catch (_: Exception) {}
-        }
-      }
-    }, teePumpExecutor)
+      },
+      teePumpExecutor,
+    )
   }
 
   fun checkExitCode(allowedExitCodes: List<Int>? = listOf(0)) {
@@ -474,7 +489,7 @@ class TeeProcessBuilder(command: List<String>) {
 
   private class TeeOutputStream(
     private val streams: List<OutputStream>,
-    private val toClose: List<Closeable>
+    private val toClose: List<Closeable>,
   ) : OutputStream() {
     override fun write(b: Int) {
       for (s in streams) s.write(b)
@@ -503,42 +518,51 @@ class BlockingCapturedOutput : OutputStream() {
   private val buffer = ByteArrayOutputStream()
   private var closed = false
 
-  override fun write(b: ByteArray, off: Int, len: Int) = synchronized(lock) {
-    buffer.write(b, off, len)
-    lock.notifyAll()
-  }
+  override fun write(b: ByteArray, off: Int, len: Int) =
+    synchronized(lock) {
+      buffer.write(b, off, len)
+      lock.notifyAll()
+    }
 
   override fun write(b: Int) = write(byteArrayOf(b.toByte()), 0, 1)
 
-  override fun close() = synchronized(lock) { closed = true; lock.notifyAll() }
-
-  fun awaitClosedOutputCopy(): ProcessOutputCopy = synchronized(lock) {
-    while (!closed) lock.wait()
-    ProcessOutputCopy(buffer.toByteArray())
-  }
-
-  fun toBlockingInputStream(): InputStream = object : InputStream() {
-    private var readPos = 0
-    @Volatile private var readerClosed = false
-
-    override fun read(b: ByteArray, off: Int, len: Int): Int = synchronized(lock) {
-      while (!readerClosed && readPos >= buffer.size() && !closed) lock.wait()
-      val snapshot = buffer.toByteArray()
-      if (readerClosed || readPos >= snapshot.size) return -1
-      val n = minOf(len, snapshot.size - readPos)
-      System.arraycopy(snapshot, readPos, b, off, n)
-      readPos += n
-      n
-    }
-
-    override fun read(): Int {
-      val b = ByteArray(1)
-      return if (read(b, 0, 1) == -1) -1 else b[0].toInt() and 0xFF
-    }
-
-    override fun close() = synchronized(lock) {
-      readerClosed = true
+  override fun close() =
+    synchronized(lock) {
+      closed = true
       lock.notifyAll()
     }
-  }
+
+  fun awaitClosedOutputCopy(): ProcessOutputCopy =
+    synchronized(lock) {
+      while (!closed) lock.wait()
+      ProcessOutputCopy(buffer.toByteArray())
+    }
+
+  fun toBlockingInputStream(): InputStream =
+    object : InputStream() {
+      private var readPos = 0
+      @Volatile private var readerClosed = false
+
+      override fun read(b: ByteArray, off: Int, len: Int): Int =
+        synchronized(lock) {
+          while (!readerClosed && readPos >= buffer.size() && !closed) lock.wait()
+          val snapshot = buffer.toByteArray()
+          if (readerClosed || readPos >= snapshot.size) return -1
+          val n = minOf(len, snapshot.size - readPos)
+          System.arraycopy(snapshot, readPos, b, off, n)
+          readPos += n
+          n
+        }
+
+      override fun read(): Int {
+        val b = ByteArray(1)
+        return if (read(b, 0, 1) == -1) -1 else b[0].toInt() and 0xFF
+      }
+
+      override fun close() =
+        synchronized(lock) {
+          readerClosed = true
+          lock.notifyAll()
+        }
+    }
 }

@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit
  * 3. Waits for the process and exits with its exit code
  *
  * ## Usage
+ *
  * ```kotlin
  * val executor = ShellExecutor()
  * val process = executor.execute("ls", "-la", "/sdcard")
@@ -60,13 +61,16 @@ class ShellExecutor {
     val wrapperScript = File(scriptDir, "shell_executor_${System.nanoTime()}.sh")
     val escapedCommand = command.joinToString(" ") { escapeArg(it) }
 
-    wrapperScript.writeText("""
+    wrapperScript.writeText(
+      """
       #!/bin/sh
       $escapedCommand 2>&1 &
       echo "___PID=$!"
       wait $!
       echo "___EXIT=$?"
-    """.trimIndent())
+    """
+        .trimIndent()
+    )
     wrapperScript.setReadable(true, false)
 
     val pfd = automation.executeShellCommand("sh ${wrapperScript.absolutePath}")
@@ -79,16 +83,17 @@ class ShellExecutor {
   }
 
   /**
-   * Executes a simple command (no shell features needed).
-   * Faster than [execute] but doesn't capture stderr or exit code.
+   * Executes a simple command (no shell features needed). Faster than [execute] but doesn't capture
+   * stderr or exit code.
    */
   fun executeSimple(command: String): String {
     return automation.executeShellCommand(command).readAndClose()
   }
 
   private fun ParcelFileDescriptor.readAndClose(): String {
-    return BufferedReader(InputStreamReader(ParcelFileDescriptor.AutoCloseInputStream(this)))
-      .use { it.readText().trim() }
+    return BufferedReader(InputStreamReader(ParcelFileDescriptor.AutoCloseInputStream(this))).use {
+      it.readText().trim()
+    }
   }
 }
 
@@ -101,10 +106,9 @@ class ShellExecutor {
  *
  * Call [exitCode] to block until the process completes and get the exit code.
  */
-class ShellProcess internal constructor(
-  private val pfd: ParcelFileDescriptor,
-  private val scriptFile: File
-) : AutoCloseable {
+class ShellProcess
+internal constructor(private val pfd: ParcelFileDescriptor, private val scriptFile: File) :
+  AutoCloseable {
   private val stream = ParcelFileDescriptor.AutoCloseInputStream(pfd)
   private val reader = BufferedReader(InputStreamReader(stream))
 
@@ -116,10 +120,7 @@ class ShellProcess internal constructor(
   private val completionLatch = CountDownLatch(1)
   private var consumed = false
 
-  /**
-   * Iterates over output lines as they arrive.
-   * Blocks until the process completes.
-   */
+  /** Iterates over output lines as they arrive. Blocks until the process completes. */
   fun forEachLine(action: (String) -> Unit) {
     check(!consumed) { "Output has already been consumed" }
     consumed = true
@@ -149,9 +150,7 @@ class ShellProcess internal constructor(
     }
   }
 
-  /**
-   * Returns the PID of the spawned process, blocking until available.
-   */
+  /** Returns the PID of the spawned process, blocking until available. */
   fun pid(): Int {
     while (pidLatch.count > 0) {
       val line = reader.readLine() ?: break
@@ -169,14 +168,10 @@ class ShellProcess internal constructor(
     return pidValue ?: -1
   }
 
-  /**
-   * Returns the PID if already available, or null.
-   */
+  /** Returns the PID if already available, or null. */
   fun pidOrNull(): Int? = pidValue
 
-  /**
-   * Reads all output as text. Blocks until process completes.
-   */
+  /** Reads all output as text. Blocks until process completes. */
   fun readText(): String {
     val builder = StringBuilder()
     forEachLine { line ->
@@ -187,34 +182,34 @@ class ShellProcess internal constructor(
   }
 
   /**
-   * Returns the exit code, blocking until the process completes.
-   * If output hasn't been consumed yet, drains and discards it.
+   * Returns the exit code, blocking until the process completes. If output hasn't been consumed
+   * yet, drains and discards it.
    */
   fun exitCode(): Int {
     if (!consumed) {
-      forEachLine { }
+      forEachLine {}
     }
     completionLatch.await()
     return exitCodeValue ?: -1
   }
 
-  /**
-   * Returns the exit code if available, or null if still running.
-   */
+  /** Returns the exit code if available, or null if still running. */
   fun exitCodeOrNull(): Int? = if (completionLatch.count == 0L) exitCodeValue else null
 
   /**
    * Waits for the process to complete with a timeout.
+   *
    * @return true if completed, false if timed out
    */
   fun waitFor(timeout: Long, unit: TimeUnit): Boolean {
     if (!consumed) {
-      forEachLine { }
+      forEachLine {}
     }
     return completionLatch.await(timeout, unit)
   }
 
-  val isAlive: Boolean get() = completionLatch.count != 0L
+  val isAlive: Boolean
+    get() = completionLatch.count != 0L
 
   override fun close() {
     cleanup()

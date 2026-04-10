@@ -2,24 +2,21 @@ package com.squareup.francis
 
 import com.datumbox.framework.common.dataobjects.FlatDataCollection
 import com.datumbox.framework.core.statistics.nonparametrics.onesample.ShapiroWilk
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import java.io.File
 import java.text.DecimalFormat
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import kotlin.random.Random
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 private const val RED = "\u001b[31m"
 private const val GREEN = "\u001b[32m"
 private const val BLUE = "\u001b[34m"
 private const val RESET = "\u001b[0m"
 
-@Serializable
-data class BenchmarksData(
-  val benchmarks: List<BenchmarkResult>,
-)
+@Serializable data class BenchmarksData(val benchmarks: List<BenchmarkResult>)
 
 @Serializable
 data class BenchmarkResult(
@@ -32,19 +29,15 @@ data class BenchmarkResult(
     get() = "${className}#${name}"
 }
 
-@Serializable
-data class MetricData(
-  val runs: List<Double>,
-)
+@Serializable data class MetricData(val runs: List<Double>)
 
-class Metric(
-  val runs: List<Double>,
-  val originalSampleSize: Int = runs.size,
-) {
+class Metric(val runs: List<Double>, val originalSampleSize: Int = runs.size) {
   val mean: Double by lazy { runs.average() }
   val median: Double by lazy { runs.p(50) }
   val variance: Double by lazy { runs.variance() }
-  val sampleSize: Int get() = runs.size
+  val sampleSize: Int
+    get() = runs.size
+
   val standardDeviation: Double by lazy { sqrt(variance) }
   val coefficientOfVariation: Double by lazy { standardDeviation / mean }
 
@@ -86,10 +79,7 @@ fun bootstrapMetric(metric: Metric, iterations: Int, sampleSize: Int): Metric {
   return Metric(bootstrappedRuns, originalSampleSize = metric.originalSampleSize)
 }
 
-data class MetricComparison(
-  val metric1: Metric,
-  val metric2: Metric,
-) {
+data class MetricComparison(val metric1: Metric, val metric2: Metric) {
   val varianceRatio: Double by lazy { metric2.variance / metric1.variance }
   val checkVarianceLessThanDouble: Boolean by lazy { varianceRatio in 0.5..2.0 }
 
@@ -113,16 +103,14 @@ data class MetricComparison(
   }
 
   val standardError: Double by lazy {
-    pooledEstimateOfStandardDeviation * sqrt((1.0 / metric1.sampleSize) + (1.0 / metric2.sampleSize))
+    pooledEstimateOfStandardDeviation *
+      sqrt((1.0 / metric1.sampleSize) + (1.0 / metric2.sampleSize))
   }
 
   fun computeConfidenceInterval(zScore: Double) = ConfidenceInterval(zScore, this)
 }
 
-class ConfidenceInterval(
-  val zScore: Double,
-  val metrics: MetricComparison,
-) {
+class ConfidenceInterval(val zScore: Double, val metrics: MetricComparison) {
   val errorMargin: Double by lazy { zScore * metrics.standardError }
   val range: Double by lazy { errorMargin * 2 }
   val meanDifference: Double by lazy { metrics.metric2.mean - metrics.metric1.mean }
@@ -130,7 +118,9 @@ class ConfidenceInterval(
     (meanDifference - errorMargin).rangeTo(meanDifference + errorMargin)
   }
   val meanDifferencePercentRange: ClosedFloatingPointRange<Double> by lazy {
-    (meanDifferenceRange.start / metrics.metric1.mean).rangeTo(meanDifferenceRange.endInclusive / metrics.metric1.mean)
+    (meanDifferenceRange.start / metrics.metric1.mean).rangeTo(
+      meanDifferenceRange.endInclusive / metrics.metric1.mean
+    )
   }
 }
 
@@ -145,7 +135,10 @@ fun parseBenchmarkJson(file: File): BenchmarksData {
   return json.decodeFromString(file.readText())
 }
 
-fun compare(benchmarkData1: BenchmarksData, benchmarkData2: BenchmarksData): PairedBenchmarkComparison {
+fun compare(
+  benchmarkData1: BenchmarksData,
+  benchmarkData2: BenchmarksData,
+): PairedBenchmarkComparison {
   val tests1 = benchmarkData1.benchmarks.associateBy { it.testName }
   val tests2 = benchmarkData2.benchmarks.associateBy { it.testName }
   check(tests1.keys == tests2.keys) {
@@ -176,26 +169,33 @@ fun printComparisonResults(comparison: PairedBenchmarkComparison, bootstrap: Boo
       if (metricComparison.allChecksPass) {
         println("$GREEN✓ All checks passed, the comparison conclusion is meaningful.$RESET\n")
         if (bootstrap) {
-          println("\nThe data checks passed, you don't need to pass the $RED--bootstrap$RESET flag.")
+          println(
+            "\nThe data checks passed, you don't need to pass the $RED--bootstrap$RESET flag."
+          )
         }
       } else {
-        println("$RED˟ Some checks did not pass, the comparison conclusion is NOT meaningful.$RESET\n")
+        println(
+          "$RED˟ Some checks did not pass, the comparison conclusion is NOT meaningful.$RESET\n"
+        )
 
-        if (!metricComparison.metric1.checkLatenciesPassNormalityTest ||
-          !metricComparison.metric2.checkLatenciesPassNormalityTest
+        if (
+          !metricComparison.metric1.checkLatenciesPassNormalityTest ||
+            !metricComparison.metric2.checkLatenciesPassNormalityTest
         ) {
           println(
             """
             The distribution of latencies did not pass the Shapiro-Wilk normality test. Open the
             corresponding HTML report to learn more.
-            """.trimIndent()
+            """
+              .trimIndent()
           )
         }
 
         if (!bootstrap) {
-          println("\nYou could get the checks to pass by generating a normal distribution based on the real distribution with the $GREEN--bootstrap$RESET flag.\n")
+          println(
+            "\nYou could get the checks to pass by generating a normal distribution based on the real distribution with the $GREEN--bootstrap$RESET flag.\n"
+          )
         }
-
       }
 
       printMetricResults(metricComparison.metric1, "Benchmark 1")
@@ -215,9 +215,15 @@ fun printComparisonResults(comparison: PairedBenchmarkComparison, bootstrap: Boo
       if (bootstrappedComparison.allChecksPass) {
         println("$GREEN✓ All checks passed, the comparison conclusion is meaningful.$RESET\n")
       } else {
-        println("$RED˟ Some checks did not pass, the comparison conclusion is NOT meaningful.$RESET\n")
-        println("\n**NOTE: Each bootstrap iteration is a resample of the original data with replacement.")
-        println("        If bootstrapped data checks fail, re-run the script to see if the results are consistent.\n")
+        println(
+          "$RED˟ Some checks did not pass, the comparison conclusion is NOT meaningful.$RESET\n"
+        )
+        println(
+          "\n**NOTE: Each bootstrap iteration is a resample of the original data with replacement."
+        )
+        println(
+          "        If bootstrapped data checks fail, re-run the script to see if the results are consistent.\n"
+        )
       }
       printMetricResults(bootstrappedMetric1, "Benchmark 1")
       printMetricResults(bootstrappedMetric2, "Benchmark 2")
@@ -237,7 +243,8 @@ private fun printMetricResults(metric: Metric, metricName: String) {
     - ${metric.checkLatenciesPassNormalityTest.check()} Latencies pass normality test
     - ${metric.standardDeviation} Standard deviation
     #########################
-    """.trimIndent()
+    """
+      .trimIndent()
   )
 }
 
@@ -289,7 +296,9 @@ private fun printResult(comparison: MetricComparison) {
   }
   println("#########################")
   println("MEDIANS")
-  println("The median went from ${comparison.metric1.median.roundToInt()} ms to ${comparison.metric2.median.roundToInt()} ms.")
+  println(
+    "The median went from ${comparison.metric1.median.roundToInt()} ms to ${comparison.metric2.median.roundToInt()} ms."
+  )
   println("DO NOT REPORT THE DIFFERENCE IN MEDIANS.")
   println("This data helps contextualize results but is not statistically meaningful.")
   println("#########################")

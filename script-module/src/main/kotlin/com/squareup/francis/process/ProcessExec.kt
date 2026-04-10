@@ -1,15 +1,13 @@
 package com.squareup.francis.script.process
 
-import logcat.LogPriority
-import com.squareup.francis.script.logging.log
 import com.squareup.francis.script.logging.logFormatted
 import com.squareup.francis.script.logging.prefix
 import com.squareup.francis.script.logging.timeFormatter
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.io.OutputStream
 import java.nio.charset.Charset
 import java.time.LocalDateTime
+import logcat.LogPriority
 
 class LineBufferedLogOutputStream(
   val formatter: ProcessOutputFormatter,
@@ -18,6 +16,7 @@ class LineBufferedLogOutputStream(
   override fun setPid(pid: Long) {
     formatter.initialize(pid)
   }
+
   private val lineBuffer = ByteArrayOutputStream()
 
   override fun write(b: Int) {
@@ -51,7 +50,7 @@ class LineBufferedLogOutputStream(
 
 class ProcessOutputFormatter(
   val logLevel: LogPriority = LogPriority.DEBUG,
-  private var streamType: String = "?"
+  private var streamType: String = "?",
 ) : (String) -> String {
   private var pid: Long = -1
 
@@ -65,25 +64,22 @@ class ProcessOutputFormatter(
   }
 }
 
-private val loggingProcessTemplate = TeeProcessBuilder(emptyList()).apply {
-  stdinRedirect = InputRedirectSpec.NULL
-  stdoutRedirect = OutputRedirectSpec.CAPTURE + loggedStdoutRedirectSpec()
-  stderrRedirect = OutputRedirectSpec.CAPTURE + loggedStderrRedirectSpec()
-  logPriority = LogPriority.INFO
-}
+private val loggingProcessTemplate =
+  TeeProcessBuilder(emptyList()).apply {
+    stdinRedirect = InputRedirectSpec.NULL
+    stdoutRedirect = OutputRedirectSpec.CAPTURE + loggedStdoutRedirectSpec()
+    stderrRedirect = OutputRedirectSpec.CAPTURE + loggedStderrRedirectSpec()
+    logPriority = LogPriority.INFO
+  }
 
-data class ExecResult(
-  val exitCode: Int,
-  val stdout: String,
-  val stderr: String,
-)
+data class ExecResult(val exitCode: Int, val stdout: String, val stderr: String)
 
 class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) {
 
   fun start(
     vararg command: String,
     commandRepr: String? = null,
-    configure: TeeProcessBuilder.() -> Unit = {}
+    configure: TeeProcessBuilder.() -> Unit = {},
   ): TeeProcess {
     val builder = template.copy().apply(configure)
     builder.command = command.toList()
@@ -95,7 +91,7 @@ class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) 
     vararg command: String,
     commandRepr: String? = null,
     allowedExitCodes: List<Int>? = listOf(0),
-    configure: TeeProcessBuilder.() -> Unit = {}
+    configure: TeeProcessBuilder.() -> Unit = {},
   ) {
     start(*command, commandRepr = commandRepr, configure = configure)
       .checkExitCode(allowedExitCodes)
@@ -106,12 +102,13 @@ class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) 
     commandRepr: String? = null,
     chomp: Boolean = true,
     allowedExitCodes: List<Int>? = listOf(0),
-    configure: TeeProcessBuilder.() -> Unit = {}
+    configure: TeeProcessBuilder.() -> Unit = {},
   ): String {
     return start(*command, commandRepr = commandRepr) {
-      configure()
-      stdoutRedirect += OutputRedirectSpec.CAPTURE
-    }.stdoutText(chomp, allowedExitCodes)
+        configure()
+        stdoutRedirect += OutputRedirectSpec.CAPTURE
+      }
+      .stdoutText(chomp, allowedExitCodes)
   }
 
   fun outputs(
@@ -119,13 +116,14 @@ class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) 
     commandRepr: String? = null,
     chomp: Boolean = false,
     allowedExitCodes: List<Int>? = listOf(0),
-    configure: TeeProcessBuilder.() -> Unit = {}
+    configure: TeeProcessBuilder.() -> Unit = {},
   ): ExecResult {
-    val process = start(*command, commandRepr = commandRepr) {
-      configure()
-      stdoutRedirect += OutputRedirectSpec.CAPTURE
-      stderrRedirect += OutputRedirectSpec.CAPTURE
-    }
+    val process =
+      start(*command, commandRepr = commandRepr) {
+        configure()
+        stdoutRedirect += OutputRedirectSpec.CAPTURE
+        stderrRedirect += OutputRedirectSpec.CAPTURE
+      }
     val exitCode = process.checkExitCode(allowedExitCodes)
     val stdoutText = process.stdoutReader.use { it.readText() }
     val stderrText = process.stderrReader.use { it.readText() }
@@ -140,25 +138,19 @@ class SubProc(private val template: TeeProcessBuilder = loggingProcessTemplate) 
 
 fun loggedStdoutRedirectSpec(logLevel: LogPriority = LogPriority.DEBUG): OutputRedirectSpec {
   val formatter = ProcessOutputFormatter(logLevel, "stdout")
-  val target = OutputTarget.ToStream(
-    LineBufferedLogOutputStream(formatter), autoClose = true
-  )
+  val target = OutputTarget.ToStream(LineBufferedLogOutputStream(formatter), autoClose = true)
   return OutputRedirectSpec(listOf(target))
 }
 
 fun loggedStderrRedirectSpec(logLevel: LogPriority = LogPriority.DEBUG): OutputRedirectSpec {
   val formatter = ProcessOutputFormatter(logLevel, "stderr")
-  val target = OutputTarget.ToStream(
-    LineBufferedLogOutputStream(formatter), autoClose = true
-  )
+  val target = OutputTarget.ToStream(LineBufferedLogOutputStream(formatter), autoClose = true)
   return OutputRedirectSpec(listOf(target))
 }
 
 fun loggedStdinRedirectSpec(logLevel: LogPriority = LogPriority.DEBUG): InputRedirectSpec {
   val formatter = ProcessOutputFormatter(logLevel, "stdin")
-  val target = OutputTarget.ToStream(
-    LineBufferedLogOutputStream(formatter), autoClose = true
-  )
+  val target = OutputTarget.ToStream(LineBufferedLogOutputStream(formatter), autoClose = true)
   return InputRedirectSpec(InputSource.Pipe, listOf(target))
 }
 
@@ -166,9 +158,10 @@ private val SAFE_ARG_PATTERN = Regex("^[a-zA-Z0-9_/.=:-]+$")
 
 fun shellEscape(args: List<String>): String = args.joinToString(" ") { shellEscapeArg(it) }
 
-fun shellEscapeArg(arg: String): String = when {
-  arg.isEmpty() -> "''"
-  SAFE_ARG_PATTERN.matches(arg) -> arg
-  !arg.contains('\'') -> "'$arg'"
-  else -> "\"" + arg.replace("""[\$`"\\!]""".toRegex()) { "\\${it.value}" } + "\""
-}
+fun shellEscapeArg(arg: String): String =
+  when {
+    arg.isEmpty() -> "''"
+    SAFE_ARG_PATTERN.matches(arg) -> arg
+    !arg.contains('\'') -> "'$arg'"
+    else -> "\"" + arg.replace("""[\$`"\\!]""".toRegex()) { "\\${it.value}" } + "\""
+  }

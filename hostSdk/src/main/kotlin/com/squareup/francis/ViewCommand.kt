@@ -12,33 +12,33 @@ import com.squareup.francis.script.logging.log
 import com.squareup.francis.script.process.OutputRedirectSpec
 import com.squareup.francis.script.process.OutputTarget
 import com.sun.net.httpserver.HttpServer
-import logcat.LogPriority.ERROR
 import java.io.File
 import java.net.InetSocketAddress
+import java.net.URLEncoder
 import java.nio.file.Files
 import java.security.MessageDigest
-import java.net.URLEncoder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import logcat.LogPriority.ERROR
 
-class ViewCommand(
-  baseOptions: BaseOptions = BaseOptions(),
-) : CliktCommand(name = "view") {
-  override fun help(context: Context) = """
+class ViewCommand(baseOptions: BaseOptions = BaseOptions()) : CliktCommand(name = "view") {
+  override fun help(context: Context) =
+    """
     Open a trace file in the appropriate viewer.
 
     For .perfetto-trace files: Opens in ui.perfetto.dev using postMessage.
     For .simpleperf.data files: Converts to gecko format and opens in profiler.firefox.com.
-  """.trimIndent()
+    """
+      .trimIndent()
 
   private val baseOpts by baseOptions
 
-  private val traceFile: File by argument(help = "Path to the trace file (.perfetto-trace or .simpleperf.data)")
-    .file(mustExist = true, canBeDir = false, mustBeReadable = true)
+  private val traceFile: File by
+    argument(help = "Path to the trace file (.perfetto-trace or .simpleperf.data)")
+      .file(mustExist = true, canBeDir = false, mustBeReadable = true)
 
-  private val port: Int by option("-p", "--port", help = "Port for the local HTTP server")
-    .int()
-    .default(9001)
+  private val port: Int by
+    option("-p", "--port", help = "Port for the local HTTP server").int().default(9001)
 
   override fun run() {
     baseOpts.setup()
@@ -51,7 +51,9 @@ class ViewCommand(
         traceFile.name.endsWith(".perfetto-trace") -> openTraceInPerfetto(traceFile, port)
         traceFile.name.endsWith(".simpleperf.data") -> openTraceInFirefoxProfiler(traceFile, port)
         else -> {
-          log(ERROR) { "Unknown file type: ${traceFile.name}. Expected .perfetto-trace or .simpleperf.data" }
+          log(ERROR) {
+            "Unknown file type: ${traceFile.name}. Expected .perfetto-trace or .simpleperf.data"
+          }
         }
       }
     }
@@ -154,7 +156,9 @@ class ViewCommand(
     private fun convertToGeckoProfile(simpleperfFile: File): File? {
       val simpleperfDir = findSimpleperfDir()
       if (simpleperfDir == null) {
-        log(ERROR) { "simpleperf tools not found in Android NDK. Install NDK 28+ to enable Firefox Profiler viewing." }
+        log(ERROR) {
+          "simpleperf tools not found in Android NDK. Install NDK 28+ to enable Firefox Profiler viewing."
+        }
         return null
       }
 
@@ -180,7 +184,8 @@ class ViewCommand(
         }
       }
 
-      val outputFile = File(simpleperfFile.parent, simpleperfFile.nameWithoutExtension + ".gecko-profile.json")
+      val outputFile =
+        File(simpleperfFile.parent, simpleperfFile.nameWithoutExtension + ".gecko-profile.json")
       log { "Converting simpleperf data to gecko profile format..." }
 
       val command = mutableListOf(geckoProfileGenerator, "-i", simpleperfFile.absolutePath)
@@ -205,19 +210,21 @@ class ViewCommand(
       var dedupedBytes = 0L
       var total = 0
 
-      binaryCacheDir.walkTopDown()
+      binaryCacheDir
+        .walkTopDown()
         .filter { it.isFile && !Files.isSymbolicLink(it.toPath()) }
         .forEach { file ->
           total++
-          val hash = file.inputStream().use { input ->
-            val digest = MessageDigest.getInstance("SHA-256")
-            val buffer = ByteArray(8192)
-            var read: Int
-            while (input.read(buffer).also { read = it } != -1) {
-              digest.update(buffer, 0, read)
+          val hash =
+            file.inputStream().use { input ->
+              val digest = MessageDigest.getInstance("SHA-256")
+              val buffer = ByteArray(8192)
+              var read: Int
+              while (input.read(buffer).also { read = it } != -1) {
+                digest.update(buffer, 0, read)
+              }
+              digest.digest().joinToString("") { "%02x".format(it) }
             }
-            digest.digest().joinToString("") { "%02x".format(it) }
-          }
 
           val cached = File(globalCache, hash)
           if (!cached.exists()) {
@@ -232,16 +239,20 @@ class ViewCommand(
 
       if (deduped > 0) {
         val savedMb = dedupedBytes / (1024 * 1024)
-        log { "Deduplicated $deduped of $total binaries, saved ${savedMb}MB using global symbol cache" }
+        log {
+          "Deduplicated $deduped of $total binaries, saved ${savedMb}MB using global symbol cache"
+        }
       }
     }
 
     private fun findSimpleperfDir(): File? {
-      val androidHome = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT") ?: return null
+      val androidHome =
+        System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT") ?: return null
       val ndkDir = File(androidHome, "ndk")
       if (!ndkDir.isDirectory) return null
 
-      return ndkDir.listFiles()
+      return ndkDir
+        .listFiles()
         ?.filter { it.isDirectory }
         ?.sortedDescending()
         ?.map { File(it, "simpleperf") }
@@ -250,19 +261,20 @@ class ViewCommand(
 
     private fun openInBrowser(url: String) {
       val os = System.getProperty("os.name").lowercase()
-      val command = when {
-        os.contains("mac") -> arrayOf("open", url)
-        os.contains("linux") -> arrayOf("xdg-open", url)
-        else -> {
-          log { "Open manually: $url" }
-          return
+      val command =
+        when {
+          os.contains("mac") -> arrayOf("open", url)
+          os.contains("linux") -> arrayOf("xdg-open", url)
+          else -> {
+            log { "Open manually: $url" }
+            return
+          }
         }
-      }
       ProcessBuilder(*command).start()
     }
 
     private fun generatePerfettoHtml(fileName: String): String {
-    return """
+      return """
 <!DOCTYPE html>
 <html>
 <head>
@@ -373,7 +385,8 @@ class ViewCommand(
   </script>
 </body>
 </html>
-    """.trimIndent()
+    """
+        .trimIndent()
     }
   }
 }

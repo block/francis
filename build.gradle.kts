@@ -1,3 +1,5 @@
+import com.ncorti.ktfmt.gradle.KtfmtExtension
+
 buildscript {
     repositories {
         google()
@@ -9,6 +11,7 @@ buildscript {
 }
 
 plugins {
+    alias(libs.plugins.ktfmt)
     // Plugins need to be declared here to avoid warnings like:
     //   The Kotlin Gradle plugin was loaded multiple times in different
     //   subprojects, which is not supported and may break the build.
@@ -21,6 +24,30 @@ plugins {
 repositories {
     google()
     mavenCentral()
+}
+
+allprojects {
+    if (this != rootProject) {
+        apply(plugin = "com.ncorti.ktfmt.gradle")
+    }
+
+    extensions.configure<KtfmtExtension> {
+        googleStyle()
+    }
+
+    tasks.matching { it.name == "check" }.configureEach {
+        dependsOn(tasks.named("ktfmtCheck"))
+    }
+}
+
+tasks.named("ktfmtCheck") {
+    description = "Run ktfmt checks for the root build scripts and all modules."
+    dependsOn(subprojects.map { "${it.path}:ktfmtCheck" })
+}
+
+tasks.named("ktfmtFormat") {
+    description = "Run ktfmt formatting for the root build scripts and all modules."
+    dependsOn(subprojects.map { "${it.path}:ktfmtFormat" })
 }
 
 tasks.register<Copy>("releaseArtifacts") {

@@ -1,0 +1,9 @@
+config:
+  id: francis-demo/setup
+  target: default
+  devices:
+    android:
+      driver: ANDROID_ONDEVICE_ACCESSIBILITY
+
+trail:
+  - verify: The home screen shows the "Show details" button.

@@ -1,0 +1,10 @@
+config:
+  id: francis-demo/show-details
+  target: default
+  devices:
+    android:
+      driver: ANDROID_ONDEVICE_ACCESSIBILITY
+
+trail:
+  - step: Tap the "Show details" button to open the details screen.
+  - verify: The "Details screen" title is visible.

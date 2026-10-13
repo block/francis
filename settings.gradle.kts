@@ -33,4 +33,9 @@ include("demo-app")
 
 include("demo-instrumentation")
 
+include("demo-trailblaze-instrumentation")
+
+// Allows testing the integration before Trailblaze publishes a complete Android dependency graph.
+providers.gradleProperty("trailblazeCheckout").orNull?.let { includeBuild(it) }
+
 include("tool:release")

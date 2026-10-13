@@ -59,6 +59,7 @@ tasks.register<Copy>("releaseArtifacts") {
   // Include benchmark-variant from demo-app/demo-instrumentation
   dependsOn(":demo-app:assembleBenchmark")
   dependsOn(":demo-instrumentation:assembleBenchmark")
+  dependsOn(":demo-trailblaze-instrumentation:assembleBenchmark")
   dependsOn(":main:jar")
   dependsOn(":demo:jar")
   dependsOn(":hostSdk:jar")
@@ -84,6 +85,13 @@ tasks.register<Copy>("releaseArtifacts") {
   from(project(":demo-instrumentation").layout.buildDirectory.dir("outputs/apk/benchmark")) {
     include("*.apk")
     rename { _ -> "demo-instrumentation.apk" }
+  }
+
+  from(
+    project(":demo-trailblaze-instrumentation").layout.buildDirectory.dir("outputs/apk/benchmark")
+  ) {
+    include("*.apk")
+    rename { _ -> "demo-trailblaze-instrumentation.apk" }
   }
 
   // Copy wrapper scripts from prebuilt/

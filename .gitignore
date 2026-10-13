@@ -27,3 +27,7 @@ gradle-app.setting
 local.properties
 
 **/.agents/knowledge/
+
+# Trailblaze local settings and run artifacts
+.trailblaze/
+logs/

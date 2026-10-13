@@ -16,8 +16,8 @@ plugins {
   //   subprojects, which is not supported and may break the build.
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.kotlin.serialization) apply false
-  id("com.android.application") version "8.5.0" apply false
-  kotlin("android") version "1.9.23" apply false
+  alias(libs.plugins.android.application) apply false
+  alias(libs.plugins.kotlin.android) apply false
 }
 
 repositories {

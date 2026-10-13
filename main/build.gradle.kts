@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -17,7 +18,7 @@ dependencies {
   implementation(kotlin("stdlib"))
 }
 
-tasks.withType<KotlinCompile> { kotlinOptions { jvmTarget = "17" } }
+tasks.withType<KotlinCompile> { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
 application { mainClass.set("com.squareup.francis.main.MainKt") }
 

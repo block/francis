@@ -6,4 +6,12 @@ config:
       driver: ANDROID_ONDEVICE_ACCESSIBILITY
 
 trail:
-  - verify: The home screen shows the "Show details" button.
+  - verify: "The home screen shows the \"Show details\" button."
+    recording:
+      android-phone:
+        - assertVisibleBySelector:
+            reason: The home screen is currently visible and the objective is to verify that the “Show details” button is present. No interaction is needed; I am asserting the button shown on screen.
+            nodeSelector:
+              androidAccessibility:
+                textRegex: Show details
+            expectedText: Show details

@@ -128,8 +128,9 @@ benchmark, after installing the demo app:
 ```sh
 demo_device=emulator-5554
 demo_trails=demo-trailblaze-instrumentation/src/main/assets/trails
-adb -s "$demo_device" shell am force-stop com.squareup.francis.demoapp
-adb -s "$demo_device" shell am start -W -n com.squareup.francis.demoapp/.MainActivity
+# NEW_TASK | CLEAR_TASK: reset the activity while retaining the app process.
+adb -s "$demo_device" shell am start -W -f 0x10008000 \
+  -n com.squareup.francis.demoapp/.MainActivity
 trailblaze run "$demo_trails/setup.trail.yaml" --device "android/$demo_device" \
   --no-use-recorded-steps --self-heal --save-recording --max-llm-calls 5
 trailblaze run "$demo_trails/show-details.trail.yaml" --device "android/$demo_device" \
@@ -173,9 +174,13 @@ scripts/francis-trailblaze-demo bench --dev --iterations 3
 scripts/francis-trailblaze-demo bench --iterations 30
 ```
 
-Each iteration launches a fresh demo-app process and rebinds Trailblaze's
-accessibility service in `setupBlock`. The setup trail checks the home screen;
-the measured trail taps **Show details** and verifies the details screen.
+Each iteration resets the demo activity to its home screen while retaining the
+app process, then ensures Trailblaze's accessibility service is ready in
+`setupBlock`. The setup trail taps **Browse items** and selects **Coffee**;
+the measured trail taps **Show details** and verifies **Coffee details**. The
+selection is a prerequisite for the measured interaction, so it belongs outside
+measurement. A process reset would only be needed for a scenario that deliberately
+measures behavior in a fresh process.
 `TraceSectionMetric` reports the app's `Demo.showDetails` handler duration, so
 the reported metric excludes the replay harness's screenshots, selectors, and
 logging. That work still runs during measurement and may affect the app, so this

@@ -15,16 +15,27 @@ class MainActivity : Activity() {
   }
 
   private fun showHome() {
+    setContentView(screen("Hello, minimal Android app!", "Browse items", ::showItems))
+  }
+
+  private fun showItems() {
     setContentView(
-      screen("Hello, minimal Android app!", "Show details") {
-        Trace.beginSection("Demo.showDetails")
-        try {
-          setContentView(screen("Details screen", "Close details", ::showHome))
-        } finally {
-          Trace.endSection()
-        }
-      }
+      screen("Choose an item", "Coffee") { showItem("Coffee") }
+        .apply { addView(button("Tea") { showItem("Tea") }) }
     )
+  }
+
+  private fun showItem(item: String) {
+    setContentView(screen(item, "Show details") { showDetails(item) })
+  }
+
+  private fun showDetails(item: String) {
+    Trace.beginSection("Demo.showDetails")
+    try {
+      setContentView(screen("$item details", "Back to items", ::showItems))
+    } finally {
+      Trace.endSection()
+    }
   }
 
   private fun screen(title: String, buttonLabel: String, onClick: () -> Unit): LinearLayout =
@@ -37,12 +48,13 @@ class MainActivity : Activity() {
           textSize = 20f
         }
       )
-      addView(
-        Button(this@MainActivity).apply {
-          text = buttonLabel
-          isAllCaps = false
-          setOnClickListener { onClick() }
-        }
-      )
+      addView(button(buttonLabel, onClick))
+    }
+
+  private fun button(label: String, onClick: () -> Unit): Button =
+    Button(this).apply {
+      text = label
+      isAllCaps = false
+      setOnClickListener { onClick() }
     }
 }

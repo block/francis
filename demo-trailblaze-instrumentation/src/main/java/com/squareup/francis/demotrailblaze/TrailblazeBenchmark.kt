@@ -2,6 +2,7 @@ package com.squareup.francis.demotrailblaze
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Build
 import androidx.benchmark.Shell
 import androidx.benchmark.macro.CompilationMode
@@ -70,11 +71,14 @@ class TrailblazeBenchmark {
       compilationMode = CompilationMode.None(),
       iterations = 5,
       setupBlock = {
-        // Each iteration starts from the home screen, outside measurement.
-        killProcess()
-        startActivityAndWait()
+        // Keep the process alive for this interaction benchmark. Use killProcess() here only
+        // if the scenario needs a fresh process (for example, to measure first-use behavior).
+        // Reset the activity to the home screen without resetting the process.
+        // With Macrobenchmark 1.5+, use startApp(packageName) on this scope, retaining these flags.
+        startActivityAndWait { it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK) }
         // Shell/UiDevice operations can reconnect UiAutomation and unbind the service.
         OnDeviceAccessibilityServiceSetup.ensureAccessibilityServiceReady()
+        // Browse the item list and select Coffee, outside measurement.
         trail("setup")
       },
     ) {

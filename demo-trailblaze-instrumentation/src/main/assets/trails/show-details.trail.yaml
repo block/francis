@@ -6,27 +6,5 @@ config:
       driver: ANDROID_ONDEVICE_ACCESSIBILITY
 
 trail:
-  - step: "Tap the \"Show details\" button to open the details screen."
-    recording:
-      android-phone:
-        - tapOnElementBySelector:
-            reason: The app is on the main screen and the requested Show details button is visible. No steps are completed yet; next I will tap Show details and then verify that the details screen opens.
-            nodeSelector:
-              androidAccessibility:
-                textRegex: Show details
-        - assertVisibleBySelector:
-            reason: The Show details action has completed, and the current screen displays the Details screen heading with a Close details button. I am verifying the requested details screen is visible; no further navigation is needed.
-            nodeSelector:
-              androidAccessibility:
-                textRegex: Details screen
-            expectedText: Details screen
-
-  - verify: "The \"Details screen\" title is visible."
-    recording:
-      android-phone:
-        - assertVisibleBySelector:
-            reason: The current app screen visibly shows the Details screen title. No interaction is needed; I am verifying the requested title is present.
-            nodeSelector:
-              androidAccessibility:
-                textRegex: Details screen
-            expectedText: Details screen
+  - step: 'Tap "Show details" to open the selected item''s details.'
+  - verify: 'The "Coffee details" title is visible.'

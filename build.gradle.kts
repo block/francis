@@ -16,8 +16,8 @@ plugins {
   //   subprojects, which is not supported and may break the build.
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.kotlin.serialization) apply false
-  id("com.android.application") version "8.5.0" apply false
-  kotlin("android") version "1.9.23" apply false
+  alias(libs.plugins.android.application) apply false
+  alias(libs.plugins.kotlin.android) apply false
 }
 
 repositories {
@@ -59,6 +59,7 @@ tasks.register<Copy>("releaseArtifacts") {
   // Include benchmark-variant from demo-app/demo-instrumentation
   dependsOn(":demo-app:assembleBenchmark")
   dependsOn(":demo-instrumentation:assembleBenchmark")
+  dependsOn(":demo-trailblaze-instrumentation:assembleBenchmark")
   dependsOn(":main:jar")
   dependsOn(":demo:jar")
   dependsOn(":hostSdk:jar")
@@ -84,6 +85,13 @@ tasks.register<Copy>("releaseArtifacts") {
   from(project(":demo-instrumentation").layout.buildDirectory.dir("outputs/apk/benchmark")) {
     include("*.apk")
     rename { _ -> "demo-instrumentation.apk" }
+  }
+
+  from(
+    project(":demo-trailblaze-instrumentation").layout.buildDirectory.dir("outputs/apk/benchmark")
+  ) {
+    include("*.apk")
+    rename { _ -> "demo-trailblaze-instrumentation.apk" }
   }
 
   // Copy wrapper scripts from prebuilt/

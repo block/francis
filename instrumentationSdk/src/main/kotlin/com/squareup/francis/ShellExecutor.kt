@@ -1,5 +1,6 @@
 package com.squareup.francis
 
+import android.app.UiAutomation
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
@@ -39,7 +40,8 @@ import java.util.concurrent.TimeUnit
  */
 class ShellExecutor {
   private val instrumentation = InstrumentationRegistry.getInstrumentation()
-  private val automation = instrumentation.uiAutomation
+  private val automation =
+    instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
 
   private val scriptDir: File by lazy {
     instrumentation.context.externalMediaDirs.firstOrNull()

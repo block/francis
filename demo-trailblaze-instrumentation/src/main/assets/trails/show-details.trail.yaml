@@ -1,0 +1,32 @@
+config:
+  id: francis-demo/show-details
+  target: default
+  devices:
+    android:
+      driver: ANDROID_ONDEVICE_ACCESSIBILITY
+
+trail:
+  - step: "Tap \"Show details\" to open the selected item's details."
+    recording:
+      android-phone:
+        - tapOnElementBySelector:
+            reason: The item list screen is visible with the selected item “Coffee” and its “Show details” button. No steps are completed yet. Tap the visible button to open the selected item's details, then verify the resulting details screen.
+            nodeSelector:
+              androidAccessibility:
+                textRegex: Show details
+        - assertVisibleBySelector:
+            reason: The selected item's details screen is now open, showing the heading “Coffee details” and a “Back to items” button. The requested action is complete; verify the details heading is visible.
+            nodeSelector:
+              androidAccessibility:
+                textRegex: Coffee details
+            expectedText: Coffee details
+
+  - verify: "The \"Coffee details\" title is visible."
+    recording:
+      android-phone:
+        - assertVisibleBySelector:
+            reason: 'The current screen shows the Coffee details title. No interaction is needed; I am verifying that the requested title is visible. Completed: screen reached and title rendered. Next: report objective completion.'
+            nodeSelector:
+              androidAccessibility:
+                textRegex: Coffee details
+            expectedText: Coffee details

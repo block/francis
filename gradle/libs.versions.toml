@@ -1,10 +1,12 @@
 [versions]
 clikt = "5.0.3"
-kotlin = "2.1.21"
-androidGradle = "8.9.0"
+kotlin = "2.4.0"
+androidGradle = "8.10.1"
 jvmTarget = "17"
 vanniktechMavenPublish = "0.34.0"
 ktfmtGradle = "0.26.0"
+trailblaze = "0.1.0-2026.10.06"
+koog = "1.2.0"
 
 [libraries]
 vanniktech-maven-publish-plugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "vanniktechMavenPublish" }
@@ -16,6 +18,8 @@ truth = { module = "com.google.truth:truth", version = "1.4.4" }
 jetbrains-kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.6.3" }
+trailblaze-android = { module = "xyz.block.trailblaze:trailblaze-android", version.ref = "trailblaze" }
+koog-prompt-executor-clients = { module = "ai.koog:prompt-executor-clients", version.ref = "koog" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

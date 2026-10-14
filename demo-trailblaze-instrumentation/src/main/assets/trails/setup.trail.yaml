@@ -1,0 +1,47 @@
+config:
+  id: francis-demo/setup
+  target: default
+  devices:
+    android:
+      driver: ANDROID_ONDEVICE_ACCESSIBILITY
+
+trail:
+  - step: "Tap \"Browse items\" to open the item list."
+    recording:
+      android-phone:
+        - tapOnElementBySelector:
+            reason: The current screen is the Francis Demo-App home screen, and the 'Browse items' button is visible as ref l255. No task steps have been completed yet. Tap it to open the item list; the next step is to verify that the item list screen appears.
+            nodeSelector:
+              androidAccessibility:
+                textRegex: Browse items
+        - assertVisibleBySelector:
+            reason: 'The requested action is complete: ''Browse items'' was tapped successfully, and the item list screen is now displayed with the ''Choose an item'' heading plus Coffee and Tea options. Verify the list heading is visible.'
+            nodeSelector:
+              androidAccessibility:
+                textRegex: Choose an item
+            expectedText: Choose an item
+
+  - step: "Select \"Coffee\" from the item list."
+    recording:
+      android-phone:
+        - tapOnElementBySelector:
+            reason: The item list is visible with Coffee and Tea. No steps have been completed yet; I will tap the Coffee item, then verify that Coffee is selected or the resulting state is shown.
+            nodeSelector:
+              androidAccessibility:
+                textRegex: Coffee
+        - assertVisibleBySelector:
+            reason: Coffee is now displayed as the selected item in the list, and the Show details button is present. The selection step has been completed; I am verifying the Coffee entry is visible before reporting completion.
+            nodeSelector:
+              androidAccessibility:
+                textRegex: Coffee
+            expectedText: Coffee
+
+  - verify: "The selected item is \"Coffee\" and its \"Show details\" button is visible."
+    recording:
+      android-phone:
+        - assertVisibleBySelector:
+            reason: The current screen shows the selected item Coffee and its visible Show details button. No interaction has been performed yet; the required next step is to verify that the button is present before proceeding.
+            nodeSelector:
+              androidAccessibility:
+                textRegex: Show details
+            expectedText: Show details

@@ -122,7 +122,7 @@ class Adb(private val subproc: SubProc, val serial: String = detectSerial(subpro
     val maybeEval = if (evalArgs) listOf("eval \"$*\"") else listOf("\"$@\"")
 
     val procArgs =
-      listOf("sh", "-c", """adb -s $serial shell $(printf " %q" "$@")""", "--") +
+      listOf("bash", "-c", """adb -s $serial shell $(printf " %q" "$@")""", "--") +
         maybeRoot +
         listOf("sh", "-c") +
         maybeEval +
